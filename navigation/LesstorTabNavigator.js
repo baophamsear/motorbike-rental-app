@@ -1,4 +1,7 @@
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import UserProfile from "../screens/UserProfile";
+
+const Stack = createNativeStackNavigator();
 
 const LessorTabNavigator = () => {
     return (

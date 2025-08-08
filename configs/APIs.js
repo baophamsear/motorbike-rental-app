@@ -1,10 +1,11 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'http://localhost:8080/api';
 
 
 export const endpoints = {
-
+    'login' : '/auth/login',
+    'register': '/auth/register'
 }
 
 export default axios.create({

@@ -15,19 +15,21 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [user, dispatch] = useReducer(MyUseReducer, null);
-  const userRole = user ? user.user?.role : null;
+  const userRole = user?.user?.role; 
+  console.info("User role in App:", userRole);
+  console.log("User from context:", user);
 
   return (
     <MyDispatchContext.Provider value={dispatch}>
-      <MyUserContext.Provider value={state}>
-        <NavigationContainer key={user ? user?.user?.role : Math.random()}>
-          {user?.user === null ? (
+      <MyUserContext.Provider value={user}>
+        <NavigationContainer key={userRole ?? 'auth'}>
+          {!user?.isLoggedIn ? (
               <AuthNavigator />
-            ) : userRole === "renter" ? (
+            ) : userRole === 'renter' ? (
               <RenterTabNavigator/>
-            ) : userRole === "lessor" (
+            ) : userRole === 'lessor' ?(
               <LessorTabNavigator/>
-            )}
+            ) : null}
         </NavigationContainer>
       </MyUserContext.Provider>
     </MyDispatchContext.Provider>

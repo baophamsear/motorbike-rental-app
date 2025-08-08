@@ -1,12 +1,66 @@
-import React, {useState} from "react";
+import React, {useContext, useState} from "react";
 import {View, Text, TextInput, TouchableOpacity, SafeAreaView, StyleSheet} from "react-native";
 import Icon from 'react-native-vector-icons/FontAwesome';
 import loginStyles from "../../styles/LoginStyles";
+import { useNavigation } from "@react-navigation/native";
+import { MyDispatchContext } from "../../contexts/MyUserContext";
+import APIs, { endpoints } from "../../configs/APIs";
+import jwt_decode from "jwt-decode";
+
+
 
 export default function Login() {
-    const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [user, setUser] = useState({
+    'email': '',
+    'password': ''
+  });
+
+  const navigation = useNavigation();
+
+  const [loading, setLoading] = useState(false);
+  const dispatch = useContext(MyDispatchContext);
   const [hidePassword, setHidePassword] = useState(true);
+
+  const updateUser = (value, field) => {
+      setUser({...user, [field]: value});
+  }
+
+  const login = async () => {
+    try {
+      setLoading(true);
+
+      const res = await APIs.post(endpoints['login'], {
+        ...user
+      });
+      // console.info("Login response:", res.data);
+
+      const token = res.data.token;
+
+      console.info("Token received:", token);
+
+      const decoded = jwt_decode(token);
+      console.info("Decoded token:", decoded);
+
+      const role = decoded.roles?.[0]?.authority?.replace('ROLE_', '').toLowerCase();
+      const email = decoded.sub;
+
+      console.info("User role:", role);
+      console.info("User email:", email);
+
+      dispatch({
+        type: 'login',
+        payload: {
+          role,
+          email
+        }
+      });
+
+    } catch (error) { 
+      console.error("Login error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={loginStyles.container}>
@@ -21,8 +75,8 @@ export default function Login() {
           style={loginStyles.input}
           placeholder="yourmail@shrestha.com"
           placeholderTextColor="#999"
-          value={email}
-          onChangeText={setEmail}
+          value={user.email}
+          onChangeText={(text) => updateUser(text, 'email')}
         />
 
         <Text style={loginStyles.label}>PASSWORD</Text>
@@ -32,8 +86,8 @@ export default function Login() {
             placeholder="••••••••"
             placeholderTextColor="#999"
             secureTextEntry={hidePassword}
-            value={password}
-            onChangeText={setPassword}
+            value={user.password}
+            onChangeText={(text) => updateUser(text, 'password')}
           />
           <TouchableOpacity onPress={() => setHidePassword(!hidePassword)}>
             <Icon
@@ -45,7 +99,7 @@ export default function Login() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={loginStyles.loginButton}>
+        <TouchableOpacity style={loginStyles.loginButton} onPress={login} disabled={loading || !user.email || !user.password}>
           <Text style={loginStyles.loginText}>Login</Text>
         </TouchableOpacity>
 
