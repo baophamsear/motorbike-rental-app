@@ -6,6 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { MyDispatchContext } from "../../contexts/MyUserContext";
 import APIs, { endpoints } from "../../configs/APIs";
 import jwt_decode from "jwt-decode";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 
@@ -25,6 +26,10 @@ export default function Login() {
       setUser({...user, [field]: value});
   }
 
+  const createAccount = () => {
+    navigation.navigate('Register');
+  }
+
   const login = async () => {
     try {
       setLoading(true);
@@ -37,6 +42,9 @@ export default function Login() {
       const token = res.data.token;
 
       console.info("Token received:", token);
+
+      await AsyncStorage.setItem("access-token", token);
+      console.info("✅ Token đã được lưu vào AsyncStorage!");
 
       const decoded = jwt_decode(token);
       console.info("Decoded token:", decoded);
@@ -108,7 +116,7 @@ export default function Login() {
         </View>
 
         <TouchableOpacity style={loginStyles.createButton}>
-          <Text style={loginStyles.createText}>Create an Account</Text>
+          <Text style={loginStyles.createText} onPress={createAccount}>Create an Account</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

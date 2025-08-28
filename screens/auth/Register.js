@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,18 +14,25 @@ import APIs, { endpoints } from '../../configs/APIs';
 
 export default function Register() {
   const navigation = useNavigation();
+
+  // Dữ liệu form
   const [form, setForm] = useState({
     userType: '',
     fullName: '',
     email: '',
     passcode: '',
     confirmPasscode: '',
-    avatar: null,
   });
+
+  // Ảnh đại diện được lưu tạm
+  const avatarRef = useRef(null);
+  const [avatarUri, setAvatarUri] = useState(null); // chỉ dùng cho hiển thị
+
   const [loading, setLoading] = useState(false);
 
-  const { userType, fullName, email, passcode, confirmPasscode, avatar } = form;
+  const { userType, fullName, email, passcode, confirmPasscode } = form;
 
+  // Xin quyền truy cập ảnh
   useEffect(() => {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -35,11 +42,12 @@ export default function Register() {
     })();
   }, []);
 
+  // Hàm thay đổi input
   const handleInputChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    console.log(form);
   };
 
+  // Chọn ảnh đại diện
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -48,11 +56,24 @@ export default function Register() {
       quality: 0.5,
     });
 
-    if (!result.cancelled) {
-      handleInputChange('avatar', result.assets[0].uri);
+    if (!result.canceled) {
+      const file = result.assets[0];
+      const uri = file.uri;
+      const name = uri.split('/').pop();
+      const ext = name.split('.').pop();
+      const type = `image/${ext}`;
+
+      avatarRef.current = {
+        uri,
+        name,
+        type,
+      };
+
+      setAvatarUri(uri); // để hiển thị UI
     }
   };
 
+  // Gửi đăng ký
   const handleSubmit = async () => {
     if (!fullName || !email || !passcode || !confirmPasscode || !userType) {
       Alert.alert('Error', 'Please fill out all fields');
@@ -66,24 +87,33 @@ export default function Register() {
 
     try {
       setLoading(true);
-      console.log("attempting registration");
-      const res = await APIs.post(endpoints['register'], form, {
-        // headers: {
-        //   'Content-Type': 'application/json',
-        // },
+      const formData = new FormData();
+      formData.append('fullName', fullName);
+      formData.append('email', email);
+      formData.append('password', passcode);
+      formData.append('role', userType);
+
+      if (avatarRef.current) {
+        formData.append('avatarUrl', avatarRef.current); // ✅ đúng tên param trong backend
+      }
+
+      await APIs.post(endpoints['register'], formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // console.log(res.data);
+      console.log('Registration successful');
 
-      // Sau khi gửi mã xác thực thành công, chuyển sang màn xác minh
-      navigation.navigate('VerifyEmailCode', {
+      // Chuyển sang màn hình xác minh
+      navigation.navigate('EmailVerification', {
         email,
         fullName,
         passcode,
-        avatar,
+        avatar: avatarUri,
         userType,
       });
+
     } catch (error) {
+      console.error(error);
       Alert.alert('Error', error.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
@@ -94,13 +124,12 @@ export default function Register() {
     <View style={styles.container}>
       <Text style={styles.title}>Congratulations</Text>
       <Text style={styles.subtitle}>on verifying the email belongs to you</Text>
-
       <Text style={styles.signUp}>Sign up</Text>
       <Text style={styles.needMore}>we need something more</Text>
 
       <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
-        {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.avatarImage} />
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
         ) : (
           <Text style={styles.avatarPlaceholder}>Select Avatar</Text>
         )}
@@ -123,7 +152,7 @@ export default function Register() {
         autoCorrect={false}
         spellCheck={false}
         autoComplete="off"
-        textContentType="none" 
+        textContentType="none"
       />
 
       <TextInput
@@ -132,11 +161,6 @@ export default function Register() {
         secureTextEntry
         value={passcode}
         onChangeText={(text) => handleInputChange('passcode', text)}
-        autoCapitalize="none"
-        autoCorrect={false}
-        spellCheck={false}
-        autoComplete="off"
-        textContentType="none" 
       />
 
       <TextInput
@@ -148,7 +172,6 @@ export default function Register() {
       />
 
       <Text style={styles.userTypeLabel}>TYPE OF USER</Text>
-
       <View style={styles.radioContainer}>
         {['renter', 'lessor'].map((type) => (
           <TouchableOpacity
@@ -166,7 +189,11 @@ export default function Register() {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
         <Text style={styles.buttonText}>{loading ? 'Processing...' : 'Submit'}</Text>
       </TouchableOpacity>
 

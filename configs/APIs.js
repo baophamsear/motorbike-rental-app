@@ -5,7 +5,15 @@ const BASE_URL = 'http://localhost:8080/api';
 
 export const endpoints = {
     'login' : '/auth/login',
-    'register': '/auth/register'
+    'register': '/auth/register',
+    'send-code': '/auth/send-code',
+    'verify-code': '/auth/verify-code',
+    'brands': '/brands',
+    'locations': '/locations',
+    'motorbikes': '/bikes',
+    'myMotor': '/bikes/my',
+    'myContracts': '/contracts/mine',
+    'updateContract': (id) => `/contracts/${id}/update`,
 }
 
 export default axios.create({
@@ -14,6 +22,16 @@ export default axios.create({
 
 // Axios instance cho các yêu cầu có xác thực (có token)
 export const authApis = (token) => {
+    return axios.create({
+        baseURL: BASE_URL,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            // 'Content-Type': 'application/json',  // Đảm bảo gửi dữ liệu ở định dạng JSON
+        }
+    });
+};
+
+export const authApis2 = (token) => {
     return axios.create({
         baseURL: BASE_URL,
         headers: {

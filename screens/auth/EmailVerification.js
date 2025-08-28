@@ -1,91 +1,99 @@
-// import React, { useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   Alert,
-// } from 'react-native';
-// // import { getVerificationCode, verifyEmailCode } from '../api/authApi'; // chỉnh path nếu khác
-// import styles from '../../styles/VerifyEmailStyles';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+// import { getVerificationCode, verifyEmailCode } from '../api/authApi'; // chỉnh path nếu khác
+import styles from '../../styles/VerifyEmailStyles';
+import APIs, { endpoints } from '../../configs/APIs';
 
-// export default function EmailVerification({route, navigation }) {
-//   const { email, fullName, passcode, userType, avatar } = route.params;
+export default function EmailVerification({route, navigation }) {
+  const { email, fullName, passcode, userType, avatar } = route.params;
 
-//   const [code, setCode] = useState('');
-//   const [isVerified, setIsVerified] = useState(false);
+  const [code, setCode] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
 
-//   const handleSendCode = async () => {
-//     try {
-//       await getVerificationCode(email);
-//       Alert.alert('Success', 'Verification code sent to your email');
-//     } catch (err) {
-//       Alert.alert('Error', err.response?.data?.message || 'Failed to resend code');
-//     }
-//   };
+  const handleSendCode = async () => {
+    try {
+      const res = await APIs.get(endpoints['send-code'], { params: { email } });
+      console.log(res.data);
+      Alert.alert('Success', 'Verification code sent to your email');
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to resend code');
+    }
+  };
 
-//   const handleVerify = async () => {
-//     try {
-//       await verifyEmailCode(email, code);
-//       setIsVerified(true);
-//       Alert.alert('Verified', 'Your email has been verified');
-//     } catch (err) {
-//       Alert.alert('Error', err.response?.data?.message || 'Invalid or expired code');
-//     }
-//   };
+  const handleVerify = async () => {
+    try {
+      const res = await APIs.post(endpoints['verify-code'], { email, code });
+      console.log(res.data);
+      setIsVerified(true);
+      Alert.alert('Verified', res.data?.message ?? 'Your email has been verified', [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('Login'),
+        },
+      ]);
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Invalid or expired code');
+    }
+  };
 
-//   const handleNext = () => {
-//     if (!isVerified) {
-//       Alert.alert('Not verified', 'Please verify your email first');
-//       return;
-//     }
+  const handleNext = () => {
+    if (!isVerified) {
+      Alert.alert('Not verified', 'Please verify your email first');
+      return;
+    }
 
-//     // Có thể điều hướng tới trang hoàn tất đăng ký
-//     navigation.navigate('CompleteRegister', {
-//       email,
-//       fullName,
-//       passcode,
-//       userType,
-//       avatar,
-//     });
-//   };
+    // Có thể điều hướng tới trang hoàn tất đăng ký
+    navigation.navigate('CompleteRegister', {
+      email,
+      fullName,
+      passcode,
+      userType,
+      avatar,
+    });
+  };
 
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Sign up</Text>
-//       <Text style={styles.subtitle}>VERIFY THROUGH EMAIL</Text>
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Sign up</Text>
+      <Text style={styles.subtitle}>VERIFY THROUGH EMAIL</Text>
 
-//       <TextInput
-//         style={styles.input}
-//         placeholder="yourmail@example.com"
-//         value={email}
-//         editable={false}
-//       />
+      <TextInput
+        style={styles.input}
+        placeholder="yourmail@example.com"
+        value={email}
+        editable={false}
+      />
 
-//       <View style={styles.row}>
-//         <TextInput
-//           style={[styles.input, { flex: 1 }]}
-//           placeholder="Enter code"
-//           value={code}
-//           onChangeText={setCode}
-//           keyboardType="numeric"
-//         />
-//         <TouchableOpacity style={styles.codeButton} onPress={handleSendCode}>
-//           <Text style={styles.buttonText}>Get code</Text>
-//         </TouchableOpacity>
-//       </View>
+      <View style={styles.row}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Enter code"
+          value={code}
+          onChangeText={setCode}
+          keyboardType="numeric"
+        />
+        <TouchableOpacity style={styles.codeButton} onPress={handleSendCode}>
+          <Text style={styles.buttonText}>Get code</Text>
+        </TouchableOpacity>
+      </View>
 
-//       <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
-//         <Text style={styles.buttonText}>Verify</Text>
-//       </TouchableOpacity>
+      <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
+        <Text style={styles.buttonText}>Verify</Text>
+      </TouchableOpacity>
 
-//       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-//         <Text style={styles.buttonText}>Next</Text>
-//       </TouchableOpacity>
+      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+        <Text style={styles.buttonText}>Next</Text>
+      </TouchableOpacity>
 
-//       <Text style={styles.backLink} onPress={() => navigation.goBack()}>
-//         back to login
-//       </Text>
-//     </View>
-//   );
-// }
+      <Text style={styles.backLink} onPress={() => navigation.goBack()}>
+        back to login
+      </Text>
+    </View>
+  );
+}
