@@ -14,6 +14,7 @@ export const endpoints = {
     'myMotor': '/bikes/my',
     'myContracts': '/contracts/mine',
     'updateContract': (id) => `/contracts/${id}/update`,
+    'availableBikes': '/bikes/available'
 }
 
 export default axios.create({

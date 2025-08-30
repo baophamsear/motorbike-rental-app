@@ -9,6 +9,9 @@ import AuthNavigator from './navigation/AuthNavigator';
 import RenterTabNavigator from './navigation/RenterTabNavigator';
 import LessorTabNavigator from './navigation/LesstorTabNavigator';
 import { MyUserContext, MyDispatchContext } from './contexts/MyUserContext'; // Đảm bảo đúng đường dẫn
+import MapboxGL from '@rnmapbox/maps';
+
+MapboxGL.setAccessToken('pk.eyJ1IjoiYmFvcGhhbTAxMTAiLCJhIjoiY21leTc3dmdvMWVoNTJrcHlvY29xODZkYSJ9.vnT3usPvz6o6c-7X10sSmw');
 
 
 const Stack = createNativeStackNavigator();

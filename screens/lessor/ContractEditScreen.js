@@ -7,11 +7,9 @@ import {
   SafeAreaView,
   ScrollView,
   Modal,
-  Button,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DatePicker from "react-native-date-picker"; // ✅ Thay thế
 import { useRoute } from "@react-navigation/native";
 import styles from "../../assets/styles/contractEditStyles";
 import { getAuthApi } from "../../utils/useAuthApi";
@@ -27,8 +25,8 @@ export default function EditContractScreen() {
   const [startDate, setStartDate] = useState(contract.startDate ? new Date(contract.startDate) : null);
   const [endDate, setEndDate] = useState(contract.endDate ? new Date(contract.endDate) : null);
 
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [isStartOpen, setIsStartOpen] = useState(false); // ✅ Thay vì showStartPicker
+  const [isEndOpen, setIsEndOpen] = useState(false);     // ✅ Thay vì showEndPicker
 
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedAddress, setSelectedAddress] = useState("");
@@ -39,11 +37,9 @@ export default function EditContractScreen() {
 
   const formatDate = (date) => {
     if (!date) return "-";
-    
     const d = (date instanceof Date) ? date : new Date(date);
     return isNaN(d.getTime()) ? "-" : d.toISOString().split("T")[0];
   };
-
 
   const handleSave = async () => {
     if (!startDate || !endDate) {
@@ -56,11 +52,11 @@ export default function EditContractScreen() {
       const payload = {
         startDate: startDate.toISOString().split("T")[0],
         endDate: endDate.toISOString().split("T")[0],
-        paymentCycle: paymentCycle, // backend dùng ENUM
+        paymentCycle,
         locationPoint: selectedLocation ? {
           latitude: selectedLocation.latitude,
           longitude: selectedLocation.longitude,
-          address: "Vị trí được chọn trên bản đồ" // Nếu bạn có reverse geocode thì thay bằng địa chỉ thật
+          address: "Vị trí được chọn trên bản đồ"
         } : null
       };
 
@@ -122,7 +118,9 @@ export default function EditContractScreen() {
         <View style={styles.formCard}>
           <Text style={styles.formLabel}>Chu kỳ thanh toán</Text>
           <TouchableOpacity style={styles.pickerButton} onPress={() => setShowCycleModal(true)}>
-            <Text style={styles.pickerButtonText}>{paymentCycle === "weekly" ? "Hàng tuần" : "Hàng tháng"}</Text>
+            <Text style={styles.pickerButtonText}>
+              {paymentCycle === "weekly" ? "Hàng tuần" : "Hàng tháng"}
+            </Text>
             <Ionicons name="chevron-down" size={18} color="#6b7280" />
           </TouchableOpacity>
 
@@ -142,48 +140,48 @@ export default function EditContractScreen() {
           <View style={styles.dateRow}>
             <View style={{ flex: 1, marginRight: 8 }}>
               <Text style={styles.formLabel}>Ngày bắt đầu</Text>
-              <TouchableOpacity style={styles.input} onPress={() => setShowStartPicker(true)}>
-                <Text style={{ fontSize: 15, color: "#111827" }}>{startDate ? formatDate(startDate) : "Chọn ngày"}</Text>
+              <TouchableOpacity style={styles.input} onPress={() => setIsStartOpen(true)}>
+                <Text style={{ fontSize: 15, color: "#111827" }}>
+                  {startDate ? formatDate(startDate) : "Chọn ngày"}
+                </Text>
               </TouchableOpacity>
             </View>
 
             <View style={{ flex: 1 }}>
               <Text style={styles.formLabel}>Ngày kết thúc</Text>
-              <TouchableOpacity style={styles.input} onPress={() => setShowEndPicker(true)}>
-                <Text style={{ fontSize: 15, color: "#111827" }}>{endDate ? formatDate(endDate) : "Chọn ngày"}</Text>
+              <TouchableOpacity style={styles.input} onPress={() => setIsEndOpen(true)}>
+                <Text style={{ fontSize: 15, color: "#111827" }}>
+                  {endDate ? formatDate(endDate) : "Chọn ngày"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-
-
-          {showStartPicker && (
-            <DateTimePicker
-              value={startDate || new Date()}
-              mode="date"
-              onChange={(event, selectedDate) => {
-                setShowStartPicker(false);
-                if (event.type === "set" && selectedDate) {
-                  setStartDate(selectedDate);
-                }
-              }}
-            />
-          )}
           <Text style={styles.warningText}>⚠️ Ngày chỉ chọn được 1 lần, hãy chọn cẩn thận.</Text>
 
-          {showEndPicker && (
-            <DateTimePicker
-              value={endDate || new Date()}
-              mode="date"
-              display="default"
-              onChange={(event, selectedDate) => {
-                setShowEndPicker(false);
-                if (event.type === "set" && selectedDate) {
-                  setEndDate(selectedDate);
-                }
-              }}
-            />
-          )}
+          {/* ✅ Date Pickers */}
+          <DatePicker
+            modal
+            mode="date"
+            open={isStartOpen}
+            date={startDate || new Date()}
+            onConfirm={(date) => {
+              setIsStartOpen(false);
+              setStartDate(date);
+            }}
+            onCancel={() => setIsStartOpen(false)}
+          />
+          <DatePicker
+            modal
+            mode="date"
+            open={isEndOpen}
+            date={endDate || new Date()}
+            onConfirm={(date) => {
+              setIsEndOpen(false);
+              setEndDate(date);
+            }}
+            onCancel={() => setIsEndOpen(false)}
+          />
 
           <MapView
             style={styles.map}
@@ -197,15 +195,10 @@ export default function EditContractScreen() {
           >
             {selectedLocation && <Marker coordinate={selectedLocation} />}
           </MapView>
-           {/* <View style={styles.footer}>
-            <Text>Toạ độ: {selectedLocation ? `${selectedLocation.latitude}, ${selectedLocation.longitude}` : "Chưa chọn"}</Text>
-            {selectedAddress !== "" && <Text>Địa chỉ: {selectedAddress}</Text>}
-          </View> */}
+
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Lưu hợp đồng</Text>
           </TouchableOpacity>
-
-
         </View>
       </ScrollView>
     </SafeAreaView>
