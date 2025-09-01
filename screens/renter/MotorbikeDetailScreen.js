@@ -11,19 +11,20 @@ import { Ionicons } from "@expo/vector-icons";
 import styles from "../../assets/styles/motorDetailStyles";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapboxGL from '@rnmapbox/maps';
+import { useNavigation } from "@react-navigation/native";
 
 export default function MotorbikeDetailScreen({ route }) {
-    const bike = route.params?.bike; // dữ liệu truyền từ danh sách
+    const contract = route.params?.contract;
+    const bike = contract?.bike;
+    const nav = useNavigation();
 
-    const latitude = bike?.locationPoint?.latitude || 10.762622;
-    const longitude = bike?.locationPoint?.longitude || 106.660172;
+    const latitude = contract?.location?.latitude || 10.762622;
+    const longitude = contract?.location?.longitude || 106.660172;
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
             <ScrollView style={styles.container}>
-                <Image source={{ uri: bike?.imageUrl[0] }} style={styles.image} />
-
-
+                <Image source={{ uri: bike?.imageUrl?.[0] }} style={styles.image} />
 
                 <View style={styles.titleSection}>
                     <Text style={styles.title}>{bike?.name || 'Xe không tên'}</Text>
@@ -37,14 +38,13 @@ export default function MotorbikeDetailScreen({ route }) {
                     <Text style={styles.infoText}>{bike?.brand?.name}</Text>
                     <Ionicons name="location-outline" size={16} color="#555" style={styles.iconSpacing} />
                     <Text style={styles.infoText}>{bike?.location?.name || 'N/A'}</Text>
-
                 </View>
 
                 <View style={styles.ownerSection}>
-                    <Image source={{ uri: bike?.owner?.avatar || 'https://i.pravatar.cc/150?img=1' }} style={styles.ownerAvatar} />
+                    <Image source={{ uri: bike?.owner?.avatarUrl || 'https://i.pravatar.cc/150?img=1' }} style={styles.ownerAvatar} />
                     <View>
                         <Text style={styles.ownerName}>{bike?.owner?.fullName || 'Unknown'}</Text>
-                        <Text style={styles.ownerLabel}>Property owner</Text>
+                        <Text style={styles.ownerLabel}>Chủ xe</Text>
                     </View>
                     <TouchableOpacity style={styles.callButton}>
                         <Ionicons name="call-outline" size={20} color="#6D28D9" />
@@ -57,41 +57,55 @@ export default function MotorbikeDetailScreen({ route }) {
                 <View style={styles.facilityList}>
                     <View style={styles.facilityItem}>
                         <Ionicons name="cash-outline" size={20} color="#6B7280" />
-                        <Text style={styles.facilityText}>
-                            Giá tiền: {bike?.pricePerDay ? `$${bike.pricePerDay}/ngày` : 'N/A'}
-                        </Text>
+                        <Text style={styles.facilityText}>Giá thuê: {bike?.pricePerDay ? `${bike.pricePerDay} VNĐ/ngày` : 'N/A'}</Text>
                     </View>
 
                     <View style={styles.facilityItem}>
                         <Ionicons name="bicycle-outline" size={20} color="#6B7280" />
-                        <Text style={styles.facilityText}>
-                            Giao tận nơi: {bike?.isHomeDelivery ? 'Có' : 'Không'}
-                        </Text>
+                        <Text style={styles.facilityText}>Giao tận nơi: {bike?.homeDelivery ? 'Có' : 'Không'}</Text>
+                    </View>
+
+                    <View style={styles.facilityItem}>
+                        <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                        <Text style={styles.facilityText}>Từ {contract?.startDate} đến {contract?.endDate}</Text>
+                    </View>
+
+                    <View style={styles.facilityItem}>
+                        <Ionicons name="repeat-outline" size={20} color="#6B7280" />
+                        <Text style={styles.facilityText}>Chu kỳ: {contract?.paymentCycle}</Text>
+                    </View>
+
+                    <View style={styles.facilityItem}>
+                        <Ionicons name="file-tray-full-outline" size={20} color="#6B7280" />
+                        <Text style={styles.facilityText}>Trạng thái: {contract?.status}</Text>
                     </View>
                 </View>
 
-
                 <View style={{ height: 200, borderRadius: 12, overflow: 'hidden', marginTop: 16 }}>
-                <MapboxGL.MapView
-                    style={{ flex: 1 }}
-                    styleURL={MapboxGL.StyleURL.Street}
-                    logoEnabled={false}
-                >
-                    <MapboxGL.Camera
-                    zoomLevel={14}
-                    centerCoordinate={[longitude, latitude]}
-                    />
-                    <MapboxGL.PointAnnotation
-                    id="bike-location"
-                    coordinate={[longitude, latitude]}
-                    />
-                </MapboxGL.MapView>
+                    <MapboxGL.MapView
+                        style={{ flex: 1 }}
+                        styleURL={MapboxGL.StyleURL.Street}
+                        logoEnabled={false}
+                    >
+                        <MapboxGL.Camera
+                            zoomLevel={14}
+                            centerCoordinate={[longitude, latitude]}
+                        />
+                        <MapboxGL.PointAnnotation
+                            id="bike-location"
+                            coordinate={[longitude, latitude]}
+                        />
+                    </MapboxGL.MapView>
                 </View>
 
-                
-
-                <TouchableOpacity style={styles.advanceButton}>
-                    
+                <TouchableOpacity
+                    style={styles.advanceButton}
+                    onPress={() => {
+                        console.log("contract:", contract);
+                        console.log("location:", [longitude, latitude]);
+                        nav.navigate('SettingLocation', { ownerLocation: [longitude, latitude], contract });
+                    }}
+                >
                     <Text style={styles.advanceButtonTextBold}>Đặt xe và thanh toán</Text>
                 </TouchableOpacity>
 
@@ -110,22 +124,13 @@ export default function MotorbikeDetailScreen({ route }) {
                 />
 
                 <View style={styles.bottomRow}>
-                    <Text style={styles.bottomPrice}>$526 <Text style={styles.bottomSub}>/ month</Text></Text>
+                    <Text style={styles.bottomPrice}>{bike?.pricePerDay} <Text style={styles.bottomSub}>/ day</Text></Text>
                     <TouchableOpacity style={styles.contactButton}>
                         <Text style={styles.contactText}>Contact</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>
-    );
-}
-
-function Facility({ icon, label }) {
-    return (
-        <View style={styles.facilityItem}>
-            <Ionicons name={icon} size={20} color="#6B7280" />
-            <Text style={styles.facilityText}>{label}</Text>
-        </View>
     );
 }
 

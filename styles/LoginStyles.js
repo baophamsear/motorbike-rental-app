@@ -4,8 +4,11 @@ const loginStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 100,
+    paddingHorizontal: 24,
     paddingTop: 60,
+    width: '100%',
+    justifyContent: 'center', // ✅ căn giữa theo chiều dọc (nếu muốn)
+    alignItems: 'stretch',    // hoặc 'center' nếu bạn muốn cả chiều ngang
   },
   title: {
     fontSize: 24,

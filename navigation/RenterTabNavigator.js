@@ -6,6 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import AddButton from '../screens/shared/AddButton';
 import MotorRentBoardScreen from "../screens/renter/MotorRentBoardScreen";
 import MotorbikeDetailScreen from "../screens/renter/MotorbikeDetailScreen";
+import SettingLocationScreen from "../screens/renter/SettingLocationScreen";
+import VNPayWebScreen from "../screens/renter/VNPayWebScreen";
+import MomoWebScreen from "../screens/renter/MomoWebScreen";
+import MomoPaymentScreen from "../screens/renter/MomoPaymentScreen";
 
 
 const DashboardStack = createNativeStackNavigator();
@@ -16,8 +20,11 @@ function DashboardStackNavigator() {
 
             <DashboardStack.Screen name="MotorRentBoard" component={MotorRentBoardScreen} />
             <DashboardStack.Screen name="UserProfile" component={UserProfile} />
-            <DashboardStack.Screen name="MotorbikeDetail
-            " component={MotorbikeDetailScreen} />
+            <DashboardStack.Screen name="MotorbikeDetail" component={MotorbikeDetailScreen} />
+            <DashboardStack.Screen name="SettingLocation" component={SettingLocationScreen} />
+            <DashboardStack.Screen name="VNPayWeb" component={VNPayWebScreen} />
+            <DashboardStack.Screen name="MomoWeb" component={MomoWebScreen} />
+            <DashboardStack.Screen name="MomoPayment" component={MomoPaymentScreen} />
         </DashboardStack.Navigator>
     );
 }
