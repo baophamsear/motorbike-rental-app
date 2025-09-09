@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.motorbikeapp"
+      "bundleIdentifier": "com.anonymous.motorbikeapp",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần truy cập vị trí của bạn để tìm các hợp đồng thuê xe gần bạn."
+      }
     },
     "android": {
       "adaptiveIcon": {

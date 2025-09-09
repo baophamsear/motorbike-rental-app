@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://motorbike-rental-23.onrender.com/api';
+// const BASE_URL = 'https://motorbike-rental-23.onrender.com/api';
+const BASE_URL = 'http://localhost:8080/api';
 
 
 export const endpoints = {
@@ -18,7 +19,16 @@ export const endpoints = {
     'createRental': '/rentals',
     'createVNPay': '/vnpay/create-payment',
     'createMomo': '/momo/create-payment',
-    'momoCallback': '/momo/callback'
+    'momoCallback': '/momo/callback',
+    'getMyRental': '/rentals/my',
+    'updateActiveRental': (id) => `/rentals/${id}`,
+    'getNearbyBikes': '/contracts/nearby',
+    'getPendingRentals': '/rentals/pending',
+    'getConfirmedRentals': '/rentals/confirmed',
+    'getActiveRentals': '/rentals/active',
+    'getCompletedRentals': '/rentals/completed',
+    'getAllRentals': '/rentals/all',
+    'updateStatusRental': (id) => `/rentals/${id}/status`,
 }
 
 export default axios.create({

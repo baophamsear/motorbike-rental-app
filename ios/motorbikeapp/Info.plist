@@ -22,6 +22,8 @@
     <string>1.0.0</string>
     <key>CFBundleSignature</key>
     <string>????</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Ứng dụng cần vị trí của bạn để hiển thị các hợp đồng thuê xe gần bạn.</string>
     <key>CFBundleURLTypes</key>
     <array>
       <dict>

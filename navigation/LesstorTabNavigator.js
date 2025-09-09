@@ -12,6 +12,8 @@ import AddButton from '../screens/shared/AddButton'; // custom button giữa
 import AddMotorbike from '../screens/lessor/AddMotorbike';
 import ContractManagement from '../screens/lessor/ContractManagement';
 import ContractEditScreen from '../screens/lessor/ContractEditScreen';
+import RentalDetailScreen from '../screens/lessor/RentalDetailScreen';
+import MessageScreen from "../screens/lessor/MessageScreen";
 
 // Stack cho Dashboard
 const DashboardStack = createNativeStackNavigator();
@@ -24,6 +26,7 @@ function DashboardStackNavigator() {
       <DashboardStack.Screen name="AddMotorbike" component={AddMotorbike} />
       <DashboardStack.Screen name="ContractManagement" component={ContractManagement} />
       <DashboardStack.Screen name="ContractEdit" component={ContractEditScreen} />
+      <DashboardStack.Screen name="RentalDetail" component={RentalDetailScreen} />
 
     </DashboardStack.Navigator>
   );
@@ -32,7 +35,7 @@ function DashboardStackNavigator() {
 const Tab = createBottomTabNavigator();
 
 export default function LessorTabNavigator() {
-  
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -51,17 +54,17 @@ export default function LessorTabNavigator() {
     >
       <Tab.Screen name="Dashboard" component={DashboardStackNavigator} />
 
-      <Tab.Screen
-            name="Add"
-            component={() => null}
-            options={{
-                tabBarButton: () => <AddButton />,
-            }}
-            listeners={{
-                tabPress: e => e.preventDefault(),
-            }}
-        />
 
+      <Tab.Screen
+        name="Messages"
+        component={MessageScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+          tabBarLabel: 'Tin nhắn',
+        }}
+      />
 
       <Tab.Screen name="Profile" component={UserProfile} />
     </Tab.Navigator>
