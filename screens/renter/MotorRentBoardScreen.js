@@ -25,7 +25,13 @@ export default function MotorRentBoardScreen() {
     try {
       const api = await getAuthApi();
       const response = await api.get(endpoints["activeContracts"]);
-      setContracts(response.data);
+      console.log('API response:', JSON.stringify(response.data, null, 2)); // Debug: Log dữ liệu API
+      // Lọc contracts chỉ lấy xe có trạng thái available
+      const availableContracts = response.data.filter(
+        (contract) => contract.bike?.status === 'available'
+      );
+      console.log('Filtered available contracts:', availableContracts); // Debug: Log contracts đã lọc
+      setContracts(availableContracts);
     } catch (error) {
       console.error("Error fetching contracts:", error);
     } finally {

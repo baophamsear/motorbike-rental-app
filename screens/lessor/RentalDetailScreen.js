@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getAuthApi } from '../../utils/useAuthApi';
+import { endpoints } from '../../configs/APIs';
 
 export default function RentalDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +36,7 @@ export default function RentalDetailScreen() {
       console.log(`Fetching rental detail: id=${rentalId}`);
       const response = await api.get(`/rentals/${rentalId}`);
       console.log('API response:', JSON.stringify(response.data, null, 2));
+
 
       const rentalData = response.data || {};
       let normalizedRental = {
@@ -157,6 +159,21 @@ export default function RentalDetailScreen() {
     fetchRentalDetail();
   }, [fetchRentalDetail]);
 
+  const updateBikeStatus = useCallback(async (bikeId, status) => {
+    try {
+      const api = await getAuthApi();
+      await api.patch(endpoints['updateBikeStatus'], {
+        bikeIds: [bikeId], // ✅ là một mảng
+        status: status,
+        rejectionReason: null, // hoặc bỏ nếu không cần
+      });
+      console.log(`✅ Bike ${bikeId} status updated to "${status}"`);
+    } catch (err) {
+      console.error('❌ Error updating bike status:', err);
+    }
+  }, []);
+
+
   // Cập nhật thời gian mỗi phút
   useEffect(() => {
     const interval = setInterval(() => {
@@ -219,6 +236,12 @@ export default function RentalDetailScreen() {
             try {
               const api = await getAuthApi();
               await api.patch(`/rentals/${rentalId}/status`, { status: 'confirmed' });
+              // console.log('hello', `${rental}`);
+              // Alert.alert(`rental`, `${JSON.stringify(rentalId)}`);
+              const res = await api.get(endpoints['getRentalById'](rentalId));
+              const rental1 = res.data;
+              Alert.alert(`rental`, `${JSON.stringify(rental1.rentalContract.bike.bikeId)}`);
+              await updateBikeStatus(rental1.rentalContract.bike.bikeId, 'rented');
               Alert.alert('Thành công', 'Đơn thuê đã được xác nhận!');
               fetchRentalDetail();
             } catch (err) {

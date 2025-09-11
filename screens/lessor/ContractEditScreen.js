@@ -204,6 +204,8 @@ export default function EditContractScreen() {
         },
       };
 
+      Alert.alert('Đang gửi dữ liệu...', `${JSON.stringify(payload)}`);
+
       await api.patch(endpoints.updateContract(contract.contractId), payload);
       Alert.alert('Thành công', 'Cập nhật hợp đồng thành công!', [
         { text: 'OK', onPress: () => navigation.goBack() },

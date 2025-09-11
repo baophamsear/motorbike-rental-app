@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,7 +16,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.motorbikeapp",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần truy cập vị trí của bạn để tìm các hợp đồng thuê xe gần bạn."
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần truy cập vị trí của bạn để tìm các hợp đồng thuê xe gần bạn.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "aps-environment": "development"
       }
     },
     "android": {
@@ -24,11 +28,20 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.motorbikeapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
   }
 }

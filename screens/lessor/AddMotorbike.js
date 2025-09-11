@@ -11,12 +11,16 @@ import {
   FlatList,
   ActivityIndicator,
   StyleSheet,
+  Alert,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import APIs, { endpoints } from '../../configs/APIs';
 import { getAuthApi } from '../../utils/useAuthApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AddMotorbike() {
   const [agreed, setAgreed] = useState(false);
@@ -31,7 +35,34 @@ export default function AddMotorbike() {
   const [motorName, setMotorName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userId, setUserId] = useState(null);
   const navigation = useNavigation();
+
+  useEffect(() => {
+    // Yêu cầu quyền khi component mount
+    (async () => {
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          ]);
+          if (
+            granted['android.permission.READ_EXTERNAL_STORAGE'] !== PermissionsAndroid.RESULTS.GRANTED ||
+            granted['android.permission.READ_MEDIA_IMAGES'] !== PermissionsAndroid.RESULTS.GRANTED
+          ) {
+            Alert.alert('Lỗi', 'Cần cấp quyền truy cập thư viện ảnh để chọn ảnh!');
+          }
+        } catch (err) {
+          console.warn('Permission error:', err);
+          Alert.alert('Lỗi', 'Không thể yêu cầu quyền truy cập thư viện ảnh.');
+        }
+      }
+    })();
+    fetchBrands();
+    fetchLocations();
+  }, [fetchBrands, fetchLocations]);
 
   const fetchBrands = useCallback(async () => {
     setIsLoading(true);
@@ -40,6 +71,7 @@ export default function AddMotorbike() {
       setBrands(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching brands:', error);
+      Alert.alert('Lỗi', 'Không thể tải danh sách hãng xe.');
     } finally {
       setIsLoading(false);
     }
@@ -52,48 +84,79 @@ export default function AddMotorbike() {
       setLocations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching locations:', error);
+      Alert.alert('Lỗi', 'Không thể tải danh sách địa điểm.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const pickBikeImages = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.7,
-    });
+    try {
+      const options = {
+        mediaType: 'photo',
+        quality: 0.7,
+        allowsMultipleSelection: true,
+      };
 
-    if (!result.canceled) {
-      const selected = result.assets.map((asset) => ({
-        uri: asset.uri,
-        name: asset.uri.split('/').pop(),
-        type: 'image/' + asset.uri.split('.').pop(),
-      }));
-      setBikeImages([...bikeImages, ...selected]);
+      launchImageLibrary(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled image picker');
+        } else if (response.errorCode) {
+          console.error('ImagePicker Error: ', response.errorMessage);
+          Alert.alert('Lỗi', `Không thể chọn ảnh: ${response.errorMessage}`);
+        } else if (response.assets && response.assets.length > 0) {
+          const selected = response.assets.map((asset) => {
+            console.log('Asset:', asset);
+            return {
+              uri: Platform.OS === 'android' ? asset.uri : asset.uri.replace('file://', ''),
+              name: asset.fileName || asset.uri.split('/').pop(),
+              type: asset.type || `image/${asset.uri.split('.').pop()?.toLowerCase() || 'jpeg'}`,
+            };
+          });
+          setBikeImages((prev) => [...prev, ...selected]);
+        }
+      });
+    } catch (error) {
+      console.error('ImagePicker error:', error);
+      Alert.alert('Lỗi', `Không thể mở thư viện ảnh: ${error.message}`);
     }
   };
 
   const pickDocumentImages = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.7,
-    });
+    try {
+      const options = {
+        mediaType: 'photo',
+        quality: 0.7,
+        allowsMultipleSelection: true,
+      };
 
-    if (!result.canceled) {
-      const selected = result.assets.map((asset) => ({
-        uri: asset.uri,
-        name: asset.uri.split('/').pop(),
-        type: 'image/' + asset.uri.split('.').pop(),
-      }));
-      setDocumentImages([...documentImages, ...selected]);
+      launchImageLibrary(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled document picker');
+        } else if (response.errorCode) {
+          console.error('ImagePicker Error: ', response.errorMessage);
+          Alert.alert('Lỗi', `Không thể chọn ảnh: ${response.errorMessage}`);
+        } else if (response.assets && response.assets.length > 0) {
+          const selected = response.assets.map((asset) => {
+            console.log('Asset:', asset);
+            return {
+              uri: Platform.OS === 'android' ? asset.uri : asset.uri.replace('file://', ''),
+              name: asset.fileName || asset.uri.split('/').pop(),
+              type: asset.type || `image/${asset.uri.split('.').pop()?.toLowerCase() || 'jpeg'}`,
+            };
+          });
+          setDocumentImages((prev) => [...prev, ...selected]);
+        }
+      });
+    } catch (error) {
+      console.error('ImagePicker error:', error);
+      Alert.alert('Lỗi', `Không thể mở thư viện ảnh: ${error.message}`);
     }
   };
 
   const submitButton = async () => {
     if (!motorName || !selectedBrand || !selectedLocation || bikeImages.length === 0 || documentImages.length === 0) {
-      alert('Vui lòng điền đầy đủ thông tin và tải lên ít nhất một ảnh xe và giấy tờ.');
+      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin và tải lên ít nhất một ảnh xe và giấy tờ.');
       return;
     }
 
@@ -123,24 +186,21 @@ export default function AddMotorbike() {
 
     try {
       const api = await getAuthApi();
+      console.log('Sending FormData:', formData);
       const response = await api.post(endpoints['motorbikes'], formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
       });
-      console.log('Form submission response:', response);
-      alert('Đăng ký xe thành công!');
+      console.log('Form submission response:', response.data);
+      Alert.alert('Thành công', 'Đăng ký xe thành công!');
       navigation.goBack();
     } catch (error) {
-      console.error('Error submitting form:', error.response?.data || error);
-      alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+      console.error('Error submitting form:', error.response?.data || error.message);
+      Alert.alert('Lỗi', 'Đã có lỗi xảy ra: ' + (error.response?.data?.message || error.message));
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    fetchBrands();
-    fetchLocations();
-  }, [fetchBrands, fetchLocations]);
 
   const renderModalItem = ({ item, type }) => (
     <TouchableOpacity

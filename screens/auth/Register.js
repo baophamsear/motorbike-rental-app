@@ -6,8 +6,10 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import styles from '../../styles/RegisterStyles';
 import APIs, { endpoints } from '../../configs/APIs';
@@ -26,7 +28,7 @@ export default function Register() {
 
   // Ảnh đại diện được lưu tạm
   const avatarRef = useRef(null);
-  const [avatarUri, setAvatarUri] = useState(null); // chỉ dùng cho hiển thị
+  const [avatarUri, setAvatarUri] = useState(null); // Chỉ dùng cho hiển thị
 
   const [loading, setLoading] = useState(false);
 
@@ -35,9 +37,21 @@ export default function Register() {
   // Xin quyền truy cập ảnh
   useEffect(() => {
     (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'We need permission to access your media library.');
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          ]);
+          if (
+            granted['android.permission.READ_EXTERNAL_STORAGE'] !== PermissionsAndroid.RESULTS.GRANTED ||
+            granted['android.permission.READ_MEDIA_IMAGES'] !== PermissionsAndroid.RESULTS.GRANTED
+          ) {
+            Alert.alert('Permission required', 'We need permission to access your media library.');
+          }
+        } catch (err) {
+          console.warn(err);
+        }
       }
     })();
   }, []);
@@ -49,27 +63,38 @@ export default function Register() {
 
   // Chọn ảnh đại diện
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      const file = result.assets[0];
-      const uri = file.uri;
-      const name = uri.split('/').pop();
-      const ext = name.split('.').pop();
-      const type = `image/${ext}`;
-
-      avatarRef.current = {
-        uri,
-        name,
-        type,
+    try {
+      const options = {
+        mediaType: 'photo',
+        quality: 0.5,
+        allowsEditing: true,
+        aspect: [1, 1],
       };
 
-      setAvatarUri(uri); // để hiển thị UI
+      launchImageLibrary(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled image picker');
+        } else if (response.errorCode) {
+          console.error('ImagePicker Error: ', response.errorMessage);
+          Alert.alert('Error', `Failed to pick image: ${response.errorMessage}`);
+        } else if (response.assets && response.assets.length > 0) {
+          const file = response.assets[0];
+          const uri = Platform.OS === 'android' ? file.uri : file.uri.replace('file://', '');
+          const name = file.fileName || uri.split('/').pop();
+          const type = file.type || `image/${uri.split('.').pop()?.toLowerCase() || 'jpeg'}`;
+
+          avatarRef.current = {
+            uri,
+            name,
+            type,
+          };
+
+          setAvatarUri(uri); // Để hiển thị UI
+        }
+      });
+    } catch (error) {
+      console.error('ImagePicker error:', error);
+      Alert.alert('Error', `Failed to pick image: ${error.message}`);
     }
   };
 
@@ -94,7 +119,11 @@ export default function Register() {
       formData.append('role', userType);
 
       if (avatarRef.current) {
-        formData.append('avatarUrl', avatarRef.current); // ✅ đúng tên param trong backend
+        formData.append('avatarUrl', {
+          uri: avatarRef.current.uri,
+          name: avatarRef.current.name,
+          type: avatarRef.current.type,
+        });
       }
 
       await APIs.post(endpoints['register'], formData, {
@@ -111,9 +140,8 @@ export default function Register() {
         avatar: avatarUri,
         userType,
       });
-
     } catch (error) {
-      console.error(error);
+      console.error('Registration error:', error);
       Alert.alert('Error', error.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
