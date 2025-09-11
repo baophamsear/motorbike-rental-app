@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { Client } from '@stomp/stompjs';
+import { useEffect, useState, useRef } from "react";
+import { Client } from "@stomp/stompjs";
 
 export const useWebSocket = (topic) => {
   const [messages, setMessages] = useState([]);
@@ -9,23 +9,23 @@ export const useWebSocket = (topic) => {
     if (!topic) return;
 
     const client = new Client({
-      webSocketFactory: () => new WebSocket('http://localhost:8080/ws'), // Sử dụng ws:// hoặc wss://
+      webSocketFactory: () => new WebSocket("ws://192.168.1.10:8080/ws"),
       reconnectDelay: 5000,
       debug: (str) => console.log('[STOMP DEBUG]', str),
       onConnect: () => {
-        console.log('✅ Đã kết nối với WebSocket');
+        console.log('✅ Connected to WebSocket');
         client.subscribe(topic, (message) => {
           if (message.body) {
             const payload = JSON.parse(message.body);
-            console.log('📩 Nhận được tin nhắn:', payload);
+            console.log('📩 Message received:', payload);
             setMessages((prev) => [payload, ...prev]);
           }
         });
       },
-      onStompError: (frame) => console.error('❌ Lỗi STOMP:', frame),
-      onWebSocketError: (error) => console.error('❌ Lỗi WebSocket:', error),
+      onStompError: (frame) => console.error('❌ STOMP Error', frame),
+      onWebSocketError: (error) => console.error('❌ WebSocket Error', error),
       onWebSocketClose: (evt) => {
-        console.error('❌ WebSocket đã đóng:', evt.code, evt.reason);
+        console.error('❌ WebSocket closed:', evt.code, evt.reason);
       },
     });
 
@@ -34,7 +34,7 @@ export const useWebSocket = (topic) => {
 
     return () => {
       if (clientRef.current) {
-        console.log('🧹 Đóng kết nối WebSocket');
+        console.log('🧹 Cleaning up WebSocket connection');
         clientRef.current.deactivate();
       }
     };
@@ -44,7 +44,7 @@ export const useWebSocket = (topic) => {
     if (clientRef.current?.connected) {
       clientRef.current.publish({ destination, body: JSON.stringify(body) });
     } else {
-      console.warn('Không thể gửi tin nhắn: WebSocket chưa kết nối');
+      console.warn('Cannot send message: WebSocket is not connected');
     }
   };
 

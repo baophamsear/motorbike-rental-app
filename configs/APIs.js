@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // const BASE_URL = 'https://motorbike-rental-23.onrender.com/api';
-const BASE_URL = 'http://192.168.1.10:8080/api';
-
+// const BASE_URL = 'http://192.168.1.10:8080/api';
+const BASE_URL = 'http://localhost:8080/api';
 
 export const endpoints = {
     'login' : '/auth/login',
@@ -31,7 +31,8 @@ export const endpoints = {
     'updateStatusRental': (id) => `/rentals/${id}/status`,
     'updateBikeStatus': '/bikes/status',
     'getRentalById': (id) => `/rentals/${id}`,
-    'save-push-token': '/users/save-push-token'
+    'save-push-token': '/users/save-push-token',
+    'notifications': 'notifications'
 }
 
 export default axios.create({

@@ -13,7 +13,7 @@ import AddMotorbike from '../screens/lessor/AddMotorbike';
 import ContractManagement from '../screens/lessor/ContractManagement';
 import ContractEditScreen from '../screens/lessor/ContractEditScreen';
 import RentalDetailScreen from '../screens/lessor/RentalDetailScreen';
-import MessageScreen from "../screens/lessor/MessageScreen";
+import MessageScreen from "../screens/lessor/NotificationsScreen";
 
 // Stack cho Dashboard
 const DashboardStack = createNativeStackNavigator();
