@@ -79,16 +79,35 @@ const NotificationsScreen = () => {
   // }, [lessorId]);
 
   // Lắng nghe WebSocket khi có lessorId
-  const topic = lessorId ? topics.lessor.pendingContract(lessorId) : null;
-  const { messages } = useWebSocket(topic);
 
-  // Cập nhật notifications khi nhận được message từ WebSocket
+  const topicInit = lessorId ? topics.lessor.pendingContract(lessorId) : null;
+  const topicActive = lessorId ? topics.lessor.activeContract(lessorId) : null;
+  const topicReject = lessorId ? topics.lessor.rejectContract(lessorId) : null;
+
+  const { messages: messagesInit } = useWebSocket(topicInit);
+  const { messages: messagesActive } = useWebSocket(topicActive);
+  const { messages: messagesReject } = useWebSocket(topicReject);
+
   useEffect(() => {
-    console.log('📬 Messages từ WebSocket:', messages);
-    if (messages && messages.length > 0) {
+    console.log("📬 Messages Init:", messagesInit);
+    if (messagesInit && messagesInit.length > 0) {
       fetchNotifications();
     }
-  }, [messages, lessorId]);
+  }, [messagesInit, lessorId]);
+
+  useEffect(() => {
+    console.log("📬 Messages Active:", messagesActive);
+    if (messagesActive && messagesActive.length > 0) {
+      fetchNotifications();
+    }
+  }, [messagesActive, lessorId]);
+
+  useEffect(() => {
+    console.log("📬 Messages Reject:", messagesReject);
+    if (messagesReject && messagesReject.length > 0) {
+      fetchNotifications();
+    }
+  }, [messagesReject, lessorId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
