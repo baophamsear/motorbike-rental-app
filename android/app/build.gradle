@@ -95,6 +95,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        missingDimensionStrategy "react-native-camera", "mlkit"
     }
     signingConfigs {
         debug {
@@ -152,6 +153,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     implementation project(':react-native-config')
+    implementation "com.google.mlkit:barcode-scanning:17.2.0"
+    implementation "com.google.mlkit:face-detection:16.1.6"
+    implementation "com.google.mlkit:text-recognition:16.0.0"
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
@@ -177,3 +181,5 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+

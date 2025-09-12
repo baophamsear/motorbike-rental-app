@@ -55,7 +55,7 @@ export default function MotorbikeDetailScreen({ route }) {
             const api = await getAuthApi();
             const res = await api.post(endpoints['createRental'], {
                 contractId: contract.contractId,
-                renterId: renterId
+                // renterId: renterId
             });
         } catch (err) {
             console.error('❌ Lỗi khi tạo đơn thuê:', err.response?.data || err.message);

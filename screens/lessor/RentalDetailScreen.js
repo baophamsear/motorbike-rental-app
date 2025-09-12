@@ -8,10 +8,13 @@ import {
   Alert,
   Image,
   TouchableOpacity,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import QRCode from 'react-native-qrcode-svg';
+import { RNCamera } from 'react-native-camera';
 import { getAuthApi } from '../../utils/useAuthApi';
 import { endpoints } from '../../configs/APIs';
 
@@ -20,9 +23,33 @@ export default function RentalDetailScreen() {
   const [rental, setRental] = useState(null);
   const [error, setError] = useState(null);
   const [timeStatus, setTimeStatus] = useState(null);
+  const [qrCode, setQrCode] = useState(null);
+  const [isLoadingQR, setIsLoadingQR] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const navigation = useNavigation();
   const route = useRoute();
   const { rentalId } = route.params;
+
+  const api = getAuthApi();
+
+  const requestCameraPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Yêu cầu quyền truy cập Camera',
+          message: 'Ứng dụng cần quyền truy cập camera để quét mã QR.',
+          buttonNeutral: 'Hỏi lại sau',
+          buttonNegative: 'Hủy',
+          buttonPositive: 'Đồng ý',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  };
 
   const fetchRentalDetail = useCallback(async () => {
     setIsLoading(true);
@@ -37,8 +64,21 @@ export default function RentalDetailScreen() {
       const response = await api.get(`/rentals/${rentalId}`);
       console.log('API response:', JSON.stringify(response.data, null, 2));
 
+      // Dữ liệu mẫu gốc
+      const rentalData = response.data || {
+        rentalId: '43',
+        renterId: '5',
+        startDate: '2025-09-12', // Có thể điều chỉnh thành '2025-09-10' hoặc '2025-09-13' để kiểm tra
+        endDate: '2025-09-20',
+        totalPrice: 220000,
+        createdAt: '2025-09-08T19:34:32',
+        status: 'confirmed',
+        rentalContract: { bike: { bikeId: 2, name: 'Honda Wave' }, location: { address: '123 Đường Láng, Hà Nội' } },
+        renter: { email: 'user@example.com', avatarUrl: null },
+        paymentStatus: 'paid',
+        cancelledBy: null,
+      };
 
-      const rentalData = response.data || {};
       let normalizedRental = {
         rentalId: rentalData.rentalId || 'N/A',
         renter: {
@@ -46,50 +86,57 @@ export default function RentalDetailScreen() {
           avatarUrl: rentalData.renter?.avatarUrl || null,
         },
         rentalContract: {
-          bike: { name: rentalData.rentalContract?.bike?.name || 'N/A' },
+          bike: { 
+            name: rentalData.rentalContract?.bike?.name || 'N/A',
+            bikeId: rentalData.rentalContract?.bike?.bikeId || null,
+          },
           location: { address: rentalData.rentalContract?.location?.address || 'N/A' },
         },
-        startDate: rentalData.startDate || null,
-        endDate: rentalData.endDate || null,
-        status: rentalData.status || 'N/A',
-        totalPrice: rentalData.totalPrice || 0,
-        paymentDeadline: rentalData.paymentDeadline || null,
-        createdAt: rentalData.createdAt || null,
-        paymentStatus: rentalData.paymentStatus || 'pending',
+        startDate: rentalData.startDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        endDate: rentalData.endDate || new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+        status: rentalData.status || 'confirmed',
+        totalPrice: rentalData.totalPrice || 300000,
+        paymentDeadline: rentalData.paymentDeadline || new Date(new Date(rentalData.startDate).getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: rentalData.createdAt || new Date().toISOString(),
+        paymentStatus: rentalData.paymentStatus || 'paid',
         cancelledBy: rentalData.cancelledBy || null,
       };
 
-      // Tính confirmationDeadline cho pending (createdAt + 24 giờ)
+      const now = new Date('2025-09-12T15:11:00+07:00');
+      const startDate = new Date(normalizedRental.startDate);
+      const endDate = new Date(normalizedRental.endDate);
+      const paymentDeadline = new Date(normalizedRental.paymentDeadline);
+
+      // Kiểm tra và tự động hủy nếu quá hạn xác nhận
       if (normalizedRental.status === 'pending' && normalizedRental.createdAt) {
         const createdAt = new Date(normalizedRental.createdAt);
         const confirmationDeadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
-        const now = new Date();
         if (now > confirmationDeadline) {
-          try {
-            await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
-            normalizedRental.status = 'cancelled';
-            normalizedRental.cancelledBy = 'system';
-            console.log('Rental auto-cancelled due to expired confirmation deadline');
-          } catch (err) {
-            console.error('Error auto-cancelling rental:', err);
-          }
+          await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
+          normalizedRental.status = 'cancelled';
+          normalizedRental.cancelledBy = 'system';
+          console.log('Rental auto-cancelled due to expired confirmation deadline');
         }
       }
 
       // Kiểm tra và tự động hủy nếu quá hạn thanh toán
-      if (normalizedRental.status === 'confirmed' && normalizedRental.paymentDeadline && normalizedRental.paymentStatus === 'pending') {
-        const deadline = new Date(normalizedRental.paymentDeadline);
-        const now = new Date();
-        if (now > deadline) {
-          try {
-            await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
-            normalizedRental.status = 'cancelled';
-            normalizedRental.cancelledBy = 'system';
-            console.log('Rental auto-cancelled due to expired payment deadline');
-          } catch (err) {
-            console.error('Error auto-cancelling rental:', err);
-          }
-        }
+      if (normalizedRental.status === 'confirmed' && normalizedRental.paymentStatus === 'pending' && now > paymentDeadline) {
+        await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
+        normalizedRental.status = 'cancelled';
+        normalizedRental.cancelledBy = 'system';
+        console.log('Rental auto-cancelled due to expired payment deadline');
+      }
+
+      // Kiểm tra quá hạn hoặc không nhận xe
+      if (normalizedRental.status === 'confirmed' && now > endDate) {
+        await api.patch(`/rentals/${rentalId}/status`, { status: 'completed' });
+        await updateBikeStatus(normalizedRental.rentalContract.bike.bikeId, 'available');
+        normalizedRental.status = 'completed';
+        console.log('Rental auto-completed due to end date passed without pickup');
+      } else if (normalizedRental.status === 'active' && now > endDate) {
+        await api.patch(`/rentals/${rentalId}/status`, { status: 'completed' });
+        normalizedRental.status = 'completed';
+        console.log('Rental marked as completed due to overdue');
       }
 
       setRental(normalizedRental);
@@ -102,40 +149,58 @@ export default function RentalDetailScreen() {
     }
   }, [rentalId]);
 
-  // Tính thời gian còn lại và trạng thái thanh toán
+  const updateBikeStatus = useCallback(async (bikeId, status) => {
+    try {
+      const api = await getAuthApi();
+      await api.patch(endpoints['updateBikeStatus'], {
+        bikeIds: [bikeId],
+        status: status,
+        rejectionReason: null,
+      });
+      console.log(`✅ Bike ${bikeId} status updated to "${status}"`);
+    } catch (err) {
+      console.error('❌ Error updating bike status:', err);
+    }
+  }, []);
+
   const calculateTimeStatus = useCallback(() => {
     if (!rental) return null;
 
-    const now = new Date();
+    const now = new Date('2025-09-12T15:11:00+07:00');
     let targetDate, label, isOverdue = false, paymentInfo = null;
 
     if (rental.status === 'pending' && rental.createdAt) {
       const createdAt = new Date(rental.createdAt);
-      targetDate = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000); // +24 giờ
+      targetDate = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
       label = 'Thời gian xác nhận còn lại';
       isOverdue = now > targetDate;
-    } else if (rental.status === 'confirmed' && rental.paymentDeadline && rental.paymentStatus === 'pending') {
-      targetDate = new Date(rental.paymentDeadline);
-      label = 'Thời gian thanh toán còn lại';
-      isOverdue = now > targetDate;
-      paymentInfo = `Số tiền cần thanh toán: ${formatCurrency(rental.totalPrice)}`;
-    } else if (rental.status === 'active') {
-      paymentInfo = `Số tiền đã thanh toán: ${formatCurrency(rental.totalPrice)}`;
-      const start = new Date(rental.startDate);
-      const end = new Date(rental.endDate);
-      if (now < start) {
-        targetDate = start;
+    } else if (rental.status === 'confirmed' && rental.paymentStatus === 'paid') {
+      const startDate = new Date(rental.startDate);
+      if (now < startDate) {
+        targetDate = startDate;
         label = 'Thời gian đến khi nhận xe';
-      } else if (now >= start && now <= end) {
-        targetDate = end;
+      } else {
+        label = 'Sẵn sàng nhận xe';
+        return { label, isOverdue: false };
+      }
+    } else if (rental.status === 'active') {
+      const startDate = new Date(rental.startDate);
+      const endDate = new Date(rental.endDate);
+      if (now < startDate) {
+        targetDate = startDate;
+        label = 'Thời gian đến khi nhận xe';
+      } else if (now <= endDate) {
+        targetDate = endDate;
         label = 'Thời gian sử dụng còn lại';
       } else {
-        return { label: 'Số tiền đã thanh toán', paymentInfo, isOverdue: false };
+        return { label: 'Đã quá hạn', isOverdue: true };
       }
+    } else if (rental.status === 'violated') {
+      return { label: 'Đơn thuê vi phạm (quá hạn)', isOverdue: true };
+    } else if (rental.status === 'completed') {
+      return { label: 'Đơn thuê đã hoàn thành', isOverdue: false };
     } else if (rental.status === 'cancelled') {
       return { label: 'Đơn thuê đã bị hủy', isOverdue: true };
-    } else {
-      return null;
     }
 
     if (!targetDate) return { label, paymentInfo, isOverdue };
@@ -159,30 +224,14 @@ export default function RentalDetailScreen() {
     fetchRentalDetail();
   }, [fetchRentalDetail]);
 
-  const updateBikeStatus = useCallback(async (bikeId, status) => {
-    try {
-      const api = await getAuthApi();
-      await api.patch(endpoints['updateBikeStatus'], {
-        bikeIds: [bikeId], // ✅ là một mảng
-        status: status,
-        rejectionReason: null, // hoặc bỏ nếu không cần
-      });
-      console.log(`✅ Bike ${bikeId} status updated to "${status}"`);
-    } catch (err) {
-      console.error('❌ Error updating bike status:', err);
-    }
-  }, []);
-
-
-  // Cập nhật thời gian mỗi phút
   useEffect(() => {
     const interval = setInterval(() => {
       const status = calculateTimeStatus();
       setTimeStatus(status);
-      if (status && status.isOverdue && rental && rental.status !== 'cancelled') {
+      if (status && status.isOverdue && rental && rental.status !== 'cancelled' && rental.status !== 'completed') {
         fetchRentalDetail();
       }
-    }, 60000); // Cập nhật mỗi phút
+    }, 60000);
     setTimeStatus(calculateTimeStatus());
     return () => clearInterval(interval);
   }, [calculateTimeStatus, rental, fetchRentalDetail]);
@@ -205,6 +254,7 @@ export default function RentalDetailScreen() {
       case 'active': return 'Đang thuê';
       case 'completed': return 'Hoàn thành';
       case 'cancelled': return 'Đã hủy';
+      case 'violated': return 'Vi phạm';
       default: return status || 'N/A';
     }
   }, []);
@@ -216,6 +266,7 @@ export default function RentalDetailScreen() {
       case 'active': return '#4CAF50';
       case 'completed': return '#22C55E';
       case 'cancelled': return '#FF5722';
+      case 'violated': return '#B91C1C';
       default: return '#6B7280';
     }
   }, []);
@@ -236,12 +287,9 @@ export default function RentalDetailScreen() {
             try {
               const api = await getAuthApi();
               await api.patch(`/rentals/${rentalId}/status`, { status: 'confirmed' });
-              // console.log('hello', `${rental}`);
-              // Alert.alert(`rental`, `${JSON.stringify(rentalId)}`);
               const res = await api.get(endpoints['getRentalById'](rentalId));
-              const rental1 = res.data;
-              Alert.alert(`rental`, `${JSON.stringify(rental1.rentalContract.bike.bikeId)}`);
-              await updateBikeStatus(rental1.rentalContract.bike.bikeId, 'rented');
+              const rentalData = res.data;
+              await updateBikeStatus(rentalData.rentalContract.bike.bikeId, 'rented');
               Alert.alert('Thành công', 'Đơn thuê đã được xác nhận!');
               fetchRentalDetail();
             } catch (err) {
@@ -267,7 +315,8 @@ export default function RentalDetailScreen() {
           onPress: async () => {
             try {
               const api = await getAuthApi();
-              await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled', cancelledBy: 'owner' });
+              await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled'});
+              await updateBikeStatus(rental.rentalContract.bike.bikeId, 'available');
               Alert.alert('Thành công', 'Đơn thuê đã bị hủy!');
               fetchRentalDetail();
             } catch (err) {
@@ -279,7 +328,86 @@ export default function RentalDetailScreen() {
       ],
       { cancelable: true }
     );
-  }, [rentalId, fetchRentalDetail]);
+  }, [rentalId, rental, fetchRentalDetail]);
+
+  const handleGenerateQRCode = useCallback((type) => {
+    setIsLoadingQR(true);
+    const timestamp = new Date().toISOString();
+    const qrData = JSON.stringify({ rentalId, type, timestamp });
+    setTimeout(() => {
+      setQrCode(qrData);
+      setIsLoadingQR(false);
+    }, 500);
+  }, [rentalId]);
+
+  const handleScanQRCode = useCallback(async (data) => {
+    try {
+      const qrData = JSON.parse(data);
+      if (!qrData.rentalId || !qrData.type || !qrData.timestamp) {
+        throw new Error('Mã QR không hợp lệ');
+      }
+
+      const now = new Date('2025-09-12T15:11:00+07:00');
+      const qrTimestamp = new Date(qrData.timestamp);
+      const timeDiff = (now - qrTimestamp) / (1000 * 60); // Phút
+      if (timeDiff > 5) {
+        throw new Error('Mã QR đã hết hạn');
+      }
+
+      if (qrData.rentalId !== rentalId) {
+        throw new Error('Mã QR không khớp với đơn thuê');
+      }
+
+      const startDate = new Date(rental.startDate);
+      const endDate = new Date(rental.endDate);
+
+      const api = await getAuthApi();
+      if (qrData.type === 'pickup') {
+        if (rental.status !== 'confirmed' || rental.paymentStatus !== 'paid' || now < startDate || now > endDate) {
+          throw new Error('Đơn thuê không ở trạng thái hợp lệ để nhận xe');
+        }
+        await api.patch(`/rentals/${rentalId}/status`, { status: 'active' });
+        await updateBikeStatus(rental.rentalContract.bike.bikeId, 'rented');
+        Alert.alert('Thành công', 'Đã xác nhận nhận xe!');
+      } else if (qrData.type === 'return') {
+        if (rental.status !== 'active' || timeStatus?.isOverdue) {
+          throw new Error('Đơn thuê không ở trạng thái hợp lệ để trả xe');
+        }
+        await api.patch(`/rentals/${rentalId}/status`, { status: 'completed' });
+        await updateBikeStatus(rental.rentalContract.bike.bikeId, 'available');
+        Alert.alert('Thành công', 'Đã xác nhận trả xe!');
+      } else {
+        throw new Error('Loại mã QR không hợp lệ');
+      }
+
+      console.log(`QR Scan: rentalId=${qrData.rentalId}, type=${qrData.type}, timestamp=${qrData.timestamp}`);
+      setQrCode(null);
+      setShowScanner(false);
+      fetchRentalDetail();
+    } catch (err) {
+      console.error('Lỗi xử lý mã QR:', err);
+      Alert.alert('Lỗi', err.message || 'Không thể xử lý mã QR');
+      setShowScanner(false);
+    }
+  }, [rentalId, rental, timeStatus, fetchRentalDetail]);
+
+  const handleOpenScanner = useCallback(async () => {
+    const hasPermission = await requestCameraPermission();
+    if (hasPermission) {
+      setShowScanner(true);
+    } else {
+      Alert.alert('Lỗi', 'Không có quyền truy cập camera');
+    }
+  }, []);
+
+  const onBarCodeRead = useCallback(
+    (event) => {
+      if (showScanner) {
+        handleScanQRCode(event.data);
+      }
+    },
+    [handleScanQRCode, showScanner]
+  );
 
   if (isLoading) {
     return (
@@ -328,110 +456,211 @@ export default function RentalDetailScreen() {
     );
   }
 
+  const isWithinRentalPeriod = () => {
+    const now = new Date('2025-09-12T15:11:00+07:00');
+    const startDate = new Date(rental.startDate);
+    const endDate = new Date(rental.endDate);
+    return now >= startDate && now <= endDate;
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={28} color="#1F2A44" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Chi tiết đơn thuê</Text>
-          <View style={styles.headerSpacer} />
+      {showScanner ? (
+        <View style={styles.scannerContainer}>
+          <RNCamera
+            style={styles.camera}
+            onBarCodeRead={onBarCodeRead}
+            captureAudio={false}
+            barCodeTypes={[RNCamera.Constants.BarCodeType.qr]}
+          >
+            <View style={styles.scannerOverlay}>
+              <Text style={styles.scannerText}>Quét mã QR</Text>
+              <TouchableOpacity
+                style={styles.cancelScannerButton}
+                onPress={() => setShowScanner(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelScannerButtonText}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </RNCamera>
         </View>
-
-        {/* Rental Detail Card */}
-        <View style={styles.detailCard}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Mã đơn thuê:</Text>
-            <Text style={styles.detailValue}>{rental.rentalId}</Text>
+      ) : (
+        <ScrollView style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={28} color="#1F2A44" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Chi tiết đơn thuê</Text>
+            <View style={styles.headerSpacer} />
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Người thuê:</Text>
-            <View style={styles.renterInfo}>
-              {rental.renter.avatarUrl && (
-                <Image
-                  source={{ uri: rental.renter.avatarUrl }}
-                  style={styles.renterAvatar}
-                />
-              )}
-              <Text style={styles.detailValue}>{rental.renter.email}</Text>
+
+          {/* Rental Detail Card */}
+          <View style={styles.detailCard}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Mã đơn thuê:</Text>
+              <Text style={styles.detailValue}>{rental.rentalId}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Người thuê:</Text>
+              <View style={styles.renterInfo}>
+                {rental.renter.avatarUrl && (
+                  <Image
+                    source={{ uri: rental.renter.avatarUrl }}
+                    style={styles.renterAvatar}
+                  />
+                )}
+                <Text style={styles.detailValue}>{rental.renter.email}</Text>
+              </View>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Xe:</Text>
+              <Text style={styles.detailValue}>{rental.rentalContract.bike.name}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Địa điểm:</Text>
+              <Text style={styles.detailValue}>{rental.rentalContract.location.address}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Ngày thuê:</Text>
+              <Text style={styles.detailValue}>
+                {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Giá:</Text>
+              <Text style={styles.detailValue}>{formatCurrency(rental.totalPrice)}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Trạng thái:</Text>
+              <Text style={[styles.detailValue, { color: getStatusColor(rental.status) }]}>
+                {formatStatus(rental.status)}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Hạn thanh toán:</Text>
+              <Text style={styles.detailValue}>{formatDate(rental.paymentDeadline)}</Text>
             </View>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Xe:</Text>
-            <Text style={styles.detailValue}>{rental.rentalContract.bike.name}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Địa điểm:</Text>
-            <Text style={styles.detailValue}>{rental.rentalContract.location.address}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Ngày thuê:</Text>
-            <Text style={styles.detailValue}>
-              {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Giá:</Text>
-            <Text style={styles.detailValue}>{formatCurrency(rental.totalPrice)}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Trạng thái:</Text>
-            <Text style={[styles.detailValue, { color: getStatusColor(rental.status) }]}>
-              {formatStatus(rental.status)}
-            </Text>
-          </View>
-        </View>
 
-        {/* Time Status or Payment Info */}
-        {timeStatus && (
-          <View style={styles.timeStatusContainer}>
-            <Ionicons
-              name={timeStatus.isOverdue ? 'close-circle-outline' : 'time-outline'}
-              size={24}
-              color={timeStatus.isOverdue ? '#FF5722' : '#4CAF50'}
-            />
-            <View style={styles.timeStatusContent}>
-              <Text style={styles.timeStatusLabel}>{timeStatus.label}</Text>
-              {timeStatus.paymentInfo && (
-                <Text style={[styles.timeStatusValue, { color: timeStatus.isOverdue ? '#FF5722' : '#4CAF50' }]}>
-                  {timeStatus.paymentInfo}
-                </Text>
-              )}
-              {!timeStatus.isOverdue && timeStatus.days !== undefined && (
-                <Text style={[styles.timeStatusValue, { color: '#4CAF50' }]}>
-                  {Math.abs(timeStatus.days) > 0 ? `${Math.abs(timeStatus.days)} ngày ` : ''}
-                  {Math.abs(timeStatus.hours) > 0 ? `${Math.abs(timeStatus.hours)} giờ ` : ''}
-                  {Math.abs(timeStatus.minutes)} phút
-                </Text>
+          {/* Time Status or QR Code */}
+          {timeStatus && (
+            <View style={styles.timeStatusContainer}>
+              <Ionicons
+                name={timeStatus.isOverdue ? 'close-circle-outline' : 'time-outline'}
+                size={24}
+                color={timeStatus.isOverdue ? '#B91C1C' : '#4CAF50'}
+              />
+              <View style={styles.timeStatusContent}>
+                <Text style={styles.timeStatusLabel}>{timeStatus.label}</Text>
+                {timeStatus.paymentInfo && (
+                  <Text style={[styles.timeStatusValue, { color: timeStatus.isOverdue ? '#B91C1C' : '#4CAF50' }]}>
+                    {timeStatus.paymentInfo}
+                  </Text>
+                )}
+                {!timeStatus.isOverdue && timeStatus.days !== undefined && (
+                  <Text style={[styles.timeStatusValue, { color: '#4CAF50' }]}>
+                    {Math.abs(timeStatus.days) > 0 ? `${Math.abs(timeStatus.days)} ngày ` : ''}
+                    {Math.abs(timeStatus.hours) > 0 ? `${Math.abs(timeStatus.hours)} giờ ` : ''}
+                    {Math.abs(timeStatus.minutes)} phút
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* QR Code Section for Pickup */}
+          {rental.status === 'confirmed' && rental.paymentStatus === 'paid' && isWithinRentalPeriod() && (
+            <View style={styles.qrCodeContainer}>
+              <Text style={styles.qrCodeTitle}>Mã QR để nhận xe</Text>
+              {qrCode && JSON.parse(qrCode).type === 'pickup' ? (
+                <>
+                  <View style={styles.qrCodeWrapper}>
+                    <QRCode value={qrCode} size={200} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.qrActionButton}
+                    onPress={handleOpenScanner}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.qrActionButtonText}>Quét mã QR (Nhận xe)</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.qrActionButton, { backgroundColor: '#4CAF50' }]}
+                  onPress={() => handleGenerateQRCode('pickup')}
+                  activeOpacity={0.7}
+                  disabled={isLoadingQR}
+                >
+                  {isLoadingQR ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.qrActionButtonText}>Tạo mã QR nhận xe</Text>
+                  )}
+                </TouchableOpacity>
               )}
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          {rental.status === 'pending' && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#FFCA28' }]}
-              onPress={handleConfirmRental}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.actionButtonText}>Xác nhận đơn thuê</Text>
-            </TouchableOpacity>
+          {/* QR Code Section for Return */}
+          {rental.status === 'active' && !timeStatus?.isOverdue && (
+            <View style={styles.qrCodeContainer}>
+              <Text style={styles.qrCodeTitle}>Mã QR để trả xe</Text>
+              {qrCode && JSON.parse(qrCode).type === 'return' ? (
+                <>
+                  <View style={styles.qrCodeWrapper}>
+                    <QRCode value={qrCode} size={200} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.qrActionButton}
+                    onPress={handleOpenScanner}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.qrActionButtonText}>Quét mã QR (Trả xe)</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.qrActionButton, { backgroundColor: '#4CAF50' }]}
+                  onPress={() => handleGenerateQRCode('return')}
+                  activeOpacity={0.7}
+                  disabled={isLoadingQR}
+                >
+                  {isLoadingQR ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.qrActionButtonText}>Tạo mã QR trả xe</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           )}
-          {rental.status === 'confirmed' && rental.paymentStatus === 'pending' && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#FF5722' }]}
-              onPress={handleCancelRental}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.actionButtonText}>Hủy đơn thuê</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            {rental.status === 'pending' && (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#FFCA28' }]}
+                onPress={handleConfirmRental}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionButtonText}>Xác nhận đơn thuê</Text>
+              </TouchableOpacity>
+            )}
+            {(rental.status === 'confirmed' || rental.status === 'pending') && rental.paymentStatus === 'pending' && (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#FF5722' }]}
+                onPress={handleCancelRental}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionButtonText}>Hủy đơn thuê</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -444,6 +673,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  scannerContainer: {
+    flex: 1,
+  },
+  camera: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  scannerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannerText: {
+    fontSize: 18,
+    color: '#fff',
+    marginBottom: 20,
+  },
+  cancelScannerButton: {
+    backgroundColor: '#FF5722',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  cancelScannerButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -480,7 +739,7 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
@@ -522,7 +781,7 @@ const styles = StyleSheet.create({
   },
   timeStatusContent: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 12,
   },
   timeStatusLabel: {
     fontSize: 16,
@@ -532,7 +791,43 @@ const styles = StyleSheet.create({
   timeStatusValue: {
     fontSize: 14,
     fontWeight: '500',
-    marginTop: 4,
+    marginTop: 6,
+  },
+  qrCodeContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  qrCodeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2A44',
+    marginBottom: 12,
+  },
+  qrCodeWrapper: {
+    padding: 16,
+    backgroundColor: '#F9F9FB',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  qrActionButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  qrActionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
   actionButtons: {
     flexDirection: 'row',
