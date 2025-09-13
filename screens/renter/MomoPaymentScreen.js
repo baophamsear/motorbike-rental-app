@@ -24,9 +24,7 @@ export default function MomoPaymentScreen({ route, navigation }) {
             console.log('MoMo callback response:', response.data);
             const rentalId = route.params.orderId;
             
-            Alert.alert('Thành công', 'Thanh toán thành công (giả lập)', [
-                { text: 'OK', onPress: () => navigation.goBack() },
-            ]);
+            
 
 
             const res = await api.patch(endpoints.updateActiveRental(rentalId), {
@@ -35,6 +33,9 @@ export default function MomoPaymentScreen({ route, navigation }) {
                 totalAmount: route.params.amount,
             });
 
+            Alert.alert('Thành công', 'Thanh toán thành công (giả lập)', [
+                { text: 'OK', onPress: () => navigation.pop(2) },
+            ]);
 
         } catch (error) {
             console.error('Lỗi khi gọi MoMo callback:', error.response?.data || error.message);

@@ -8,13 +8,18 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  RefreshControl,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Thêm import AsyncStorage
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAuthApi } from '../../utils/useAuthApi';
 import { endpoints } from '../../configs/APIs';
+import { useWebSocket } from '../../utils/useWebSocket';
+import jwt_decode from 'jwt-decode';
+import { topics } from '../../utils/topics';
 
 export default function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +28,52 @@ export default function DashboardScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [filterStatus, setFilterStatus] = useState('all');
   const [error, setError] = useState(null);
+  const [lessorId, setLessorId] = useState(null);
   const navigation = useNavigation();
+  const [refreshing, setRefreshing] = useState(false);
+
+
+  // Hàm lấy lessorId từ token
+  const fetchUser = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access-token');
+      if (token) {
+        const decoded = jwt_decode(token);
+        setLessorId(decoded.userId);
+      } else {
+        throw new Error('Không tìm thấy token');
+      }
+    } catch (err) {
+      console.error('Error fetching user:', err.message);
+      setError('Không thể lấy thông tin người dùng');
+      setIsLoading(false);
+    }
+  };
+
+  // Gọi fetchUser khi component mount
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  // WebSocket setup
+  const topicCreateRental = lessorId ? topics.lessor.createRental(lessorId) : null;
+  const { messages: messagesCreateRental } = useWebSocket(topicCreateRental);
+
+  // Theo dõi WebSocket messages
+  useEffect(() => {
+    if (messagesCreateRental && messagesCreateRental.length > 0) {
+      console.log('New WebSocket message:', messagesCreateRental);
+      fetchRentals(currentPage, filterStatus);
+    }
+  }, [messagesCreateRental, currentPage, filterStatus]);
+
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchRentals(1, filterStatus); // load lại dữ liệu trang đầu
+    setRefreshing(false);
+  }, [fetchRentals, filterStatus]);
+
 
   const fetchRentals = useCallback(async (page = 1, status = 'all') => {
     setIsLoading(true);
@@ -107,9 +157,13 @@ export default function DashboardScreen() {
     }
   }, []);
 
+  // Gọi fetchRentals khi component mount hoặc khi currentPage/filterStatus thay đổi
   useEffect(() => {
-    fetchRentals(currentPage, filterStatus);
-  }, [currentPage, filterStatus, fetchRentals]);
+    if (lessorId) {
+      console.log('Fetching rentals with lessorId:', lessorId);
+      fetchRentals(currentPage, filterStatus);
+    }
+  }, [currentPage, filterStatus, lessorId, fetchRentals]);
 
   const formatDate = useCallback((date) => {
     if (!date) return 'N/A';
@@ -190,7 +244,9 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>

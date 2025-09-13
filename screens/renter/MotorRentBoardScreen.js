@@ -8,6 +8,7 @@ import {
   Image,
   SafeAreaView,
   StatusBar,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -18,6 +19,8 @@ export default function MotorRentBoardScreen() {
   const [contracts, setContracts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRenting, setIsRenting] = useState(true); // Trạng thái toggle
+  const [refreshing, setRefreshing] = useState(false);
+
   const navigation = useNavigation();
 
   const fetchContracts = async () => {
@@ -39,6 +42,13 @@ export default function MotorRentBoardScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContracts(); // gọi lại API
+    setRefreshing(false);
+  };
+
+
   useEffect(() => {
     fetchContracts();
   }, []);
@@ -46,7 +56,10 @@ export default function MotorRentBoardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }>
         {/* Welcome Title */}
         <Text style={styles.welcomeTitle}>Chào mừng đến với Rentaxo</Text>
 

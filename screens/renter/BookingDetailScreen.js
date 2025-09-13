@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { RNCamera } from 'react-native-camera';
 import { getAuthApi } from '../../utils/useAuthApi';
 import { endpoints } from '../../configs/APIs';
@@ -106,6 +106,12 @@ const BookingDetailScreen = () => {
     const endDate = new Date(rental.endDate);
     return now >= startDate && now <= endDate;
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchRentalDetail();
+    }, [])
+  );
 
   const handleOpenScanner = useCallback(async (type) => {
     const hasPermission = await requestCameraPermission();

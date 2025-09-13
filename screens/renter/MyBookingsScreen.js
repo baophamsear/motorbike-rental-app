@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -15,6 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getAuthApi } from '../../utils/useAuthApi';
 import { endpoints } from '../../configs/APIs';
 import { useNavigation } from '@react-navigation/native';
+import { useWebSocket } from '../../utils/useWebSocket';
+import { topics } from '../../utils/topics';
+import jwtDecode from 'jwt-decode';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 // Dữ liệu mẫu cho danh sách yêu cầu thuê xe
@@ -26,6 +30,45 @@ const MyBookingsScreen = () => {
     const [modalAction, setModalAction] = useState(null);
     const [selectedRequestId, setSelectedRequestId] = useState(null);
     const [rental, setRental] = useState([]);
+    const [renterId, setRenterId] = useState(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+
+    const confirmedRental = renterId ? topics.renter.confirmRental(renterId) : null;
+    const canceledRental = renterId ? topics.renter.cancelRental(renterId) : null;
+    const { messages: messagesConfirmedRental } = useWebSocket(confirmedRental);
+    const { messages: messagesCanceledRental } = useWebSocket(canceledRental);
+
+    const fetchUserId = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access-token');
+            if (token) {
+                const decoded = jwtDecode(token);
+                setRenterId(decoded.userId);
+            } else {
+                setError('Không tìm thấy token');
+            }
+        } catch (err) {
+            setError('Lỗi khi giải mã token: ' + err.message);
+        }
+    };
+
+    useEffect(() => {
+        console.log("📬 Messages CreateRental:", messagesConfirmedRental);
+        if (messagesConfirmedRental && messagesConfirmedRental.length > 0 ||
+            (messagesCanceledRental && messagesCanceledRental.length > 0)
+        ) {
+            fetchMyRentals();
+        }
+    }, [messagesConfirmedRental, messagesCanceledRental, renterId]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchMyRentals(); // load lại dữ liệu trang đầu
+        setRefreshing(false);
+    }, [fetchMyRentals]);
+
+
 
     const navigation = useNavigation();
 
@@ -51,6 +94,7 @@ const MyBookingsScreen = () => {
 
     React.useEffect(() => {
         fetchMyRentals();
+        fetchUserId();
     }, []);
 
 
@@ -107,6 +151,8 @@ const MyBookingsScreen = () => {
                 ListEmptyComponent={
                     <Text style={styles.emptyText}>Chưa có yêu cầu thuê xe nào.</Text>
                 }
+                refreshing={refreshing}       
+                onRefresh={onRefresh}
             />
 
 

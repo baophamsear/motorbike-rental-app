@@ -15,6 +15,7 @@ import MessageScreen from "../screens/renter/MessageScreen";
 import BookingDetailScreen from "../screens/renter/BookingDetailScreen";
 import PaymentBookingScreen from "../screens/renter/PaymentBookingScreen";
 import SearchMotorScreen from "../screens/renter/SearchMotorScreen";
+import NotificationsScreen from "../screens/renter/NotificationsScreen";
 
 
 
@@ -31,7 +32,7 @@ function DashboardStackNavigator() {
             <DashboardStack.Screen name="SearchMotor" component={SearchMotorScreen} />
             <DashboardStack.Screen name="VNPayWeb" component={VNPayWebScreen} />
             <DashboardStack.Screen name="MomoWeb" component={MomoWebScreen} />
-            
+
         </DashboardStack.Navigator>
     );
 }
@@ -80,26 +81,16 @@ export default function RenterTabNavigator() {
             />
 
 
-            <Tab.Screen
-                name="Add"
-                component={() => null}
-                options={{
-                    tabBarButton: () => <AddButton />,
-                }}
-                listeners={{
-                    tabPress: e => e.preventDefault(),
-                }}
-            />
 
 
             <Tab.Screen
-                name="Messages"
-                component={MessageScreen}
+                name="Notification"
+                component={NotificationsScreen}
                 options={{
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="chatbubbles" size={size} color={color} />
                     ),
-                    tabBarLabel: 'Tin nhắn',
+                    tabBarLabel: 'Thông báo',
                 }}
             />
 

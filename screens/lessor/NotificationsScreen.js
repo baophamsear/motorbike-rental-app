@@ -83,10 +83,12 @@ const NotificationsScreen = () => {
   const topicInit = lessorId ? topics.lessor.pendingContract(lessorId) : null;
   const topicActive = lessorId ? topics.lessor.activeContract(lessorId) : null;
   const topicReject = lessorId ? topics.lessor.rejectContract(lessorId) : null;
+  const topicCreateRental = lessorId ? topics.lessor.createRental(lessorId) : null;
 
   const { messages: messagesInit } = useWebSocket(topicInit);
   const { messages: messagesActive } = useWebSocket(topicActive);
   const { messages: messagesReject } = useWebSocket(topicReject);
+  const { messages: messagesCreateRental } = useWebSocket(topicCreateRental);
 
   useEffect(() => {
     console.log("📬 Messages Init:", messagesInit);
@@ -108,6 +110,13 @@ const NotificationsScreen = () => {
       fetchNotifications();
     }
   }, [messagesReject, lessorId]);
+
+  useEffect(() => {
+    console.log("📬 Messages CreateRental:", messagesCreateRental)
+    if (messagesCreateRental && messagesCreateRental.length > 0) {
+      fetchNotifications();
+    }
+  }, [messagesCreateRental, lessorId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
