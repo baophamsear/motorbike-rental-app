@@ -14,6 +14,8 @@ import ContractManagement from '../screens/lessor/ContractManagement';
 import ContractEditScreen from '../screens/lessor/ContractEditScreen';
 import RentalDetailScreen from '../screens/lessor/RentalDetailScreen';
 import MessageScreen from "../screens/lessor/NotificationsScreen";
+import MotorDetailScreen from '../screens/lessor/MotorDetailScreen';
+import ContractDetailScreen from '../screens/lessor/ContractDetailScreen';
 
 // Stack cho Dashboard
 const DashboardStack = createNativeStackNavigator();
@@ -27,6 +29,8 @@ function DashboardStackNavigator() {
       <DashboardStack.Screen name="ContractManagement" component={ContractManagement} />
       <DashboardStack.Screen name="ContractEdit" component={ContractEditScreen} />
       <DashboardStack.Screen name="RentalDetail" component={RentalDetailScreen} />
+      <DashboardStack.Screen name="MotorDetail" component={MotorDetailScreen} />
+      <DashboardStack.Screen name="ContractDetail" component={ContractDetailScreen} />
 
     </DashboardStack.Navigator>
   );

@@ -74,20 +74,20 @@ export default function Login() {
     <SafeAreaView style={loginStyles.container}>
       <View style={{ paddingHorizontal: 30 }}>
         <View style={{ marginTop: 40 }}>
-          <Text style={loginStyles.title}>Rentaxo</Text>
-          <Text style={loginStyles.subtitle}>Sign in</Text>
+          <Text style={loginStyles.title}>MotorRental</Text>
+          <Text style={loginStyles.subtitle}>ĐĂNG NHẬP</Text>
         </View>
 
-        <Text style={loginStyles.label}>YOUR EMAIL</Text>
+        <Text style={loginStyles.label}>email của bạn</Text>
         <TextInput
           style={loginStyles.input}
-          placeholder="yourmail@shrestha.com"
+          placeholder="yourmail@gmail.com"
           placeholderTextColor="#999"
           value={user.email}
           onChangeText={(text) => updateUser(text, 'email')}
         />
 
-        <Text style={loginStyles.label}>PASSWORD</Text>
+        <Text style={loginStyles.label}>mật khẩu</Text>
         <View style={loginStyles.passwordContainer}>
           <TextInput
             style={[loginStyles.input, { flex: 1 }]}
@@ -108,15 +108,15 @@ export default function Login() {
         </View>
 
         <TouchableOpacity style={loginStyles.loginButton} onPress={login} disabled={loading || !user.email || !user.password}>
-          <Text style={loginStyles.loginText}>Login</Text>
+          <Text style={loginStyles.loginText}>Đăng nhập</Text>
         </TouchableOpacity>
 
         <View style={loginStyles.registerContainer}>
-          <Text style={loginStyles.registerText}>Don’t have an account?</Text>
+          <Text style={loginStyles.registerText}>Bạn chưa có tài khoản?</Text>
         </View>
 
         <TouchableOpacity style={loginStyles.createButton}>
-          <Text style={loginStyles.createText} onPress={createAccount}>Create an Account</Text>
+          <Text style={loginStyles.createText} onPress={createAccount}>Tạo tài khoản</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

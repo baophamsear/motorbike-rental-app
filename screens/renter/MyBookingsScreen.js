@@ -8,6 +8,7 @@ import {
     Image,
     Modal,
     Alert,
+    Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,24 +21,21 @@ import { topics } from '../../utils/topics';
 import jwtDecode from 'jwt-decode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-// Dữ liệu mẫu cho danh sách yêu cầu thuê xe
-
-
 const MyBookingsScreen = () => {
-
     const [modalVisible, setModalVisible] = useState(false);
     const [modalAction, setModalAction] = useState(null);
     const [selectedRequestId, setSelectedRequestId] = useState(null);
     const [rental, setRental] = useState([]);
     const [renterId, setRenterId] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
-
+    const [fadeAnim] = useState(new Animated.Value(0)); // Animation cho modal
 
     const confirmedRental = renterId ? topics.renter.confirmRental(renterId) : null;
     const canceledRental = renterId ? topics.renter.cancelRental(renterId) : null;
     const { messages: messagesConfirmedRental } = useWebSocket(confirmedRental);
     const { messages: messagesCanceledRental } = useWebSocket(canceledRental);
+
+    const navigation = useNavigation();
 
     const fetchUserId = async () => {
         try {
@@ -46,36 +44,11 @@ const MyBookingsScreen = () => {
                 const decoded = jwtDecode(token);
                 setRenterId(decoded.userId);
             } else {
-                setError('Không tìm thấy token');
+                Alert.alert('Lỗi', 'Không tìm thấy token');
             }
         } catch (err) {
-            setError('Lỗi khi giải mã token: ' + err.message);
+            Alert.alert('Lỗi', 'Lỗi khi giải mã token: ' + err.message);
         }
-    };
-
-    useEffect(() => {
-        console.log("📬 Messages CreateRental:", messagesConfirmedRental);
-        if (messagesConfirmedRental && messagesConfirmedRental.length > 0 ||
-            (messagesCanceledRental && messagesCanceledRental.length > 0)
-        ) {
-            fetchMyRentals();
-        }
-    }, [messagesConfirmedRental, messagesCanceledRental, renterId]);
-
-    const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        await fetchMyRentals(); // load lại dữ liệu trang đầu
-        setRefreshing(false);
-    }, [fetchMyRentals]);
-
-
-
-    const navigation = useNavigation();
-
-    const handleAction = (requestId, action) => {
-        setSelectedRequestId(requestId);
-        setModalAction(action);
-        setModalVisible(true);
     };
 
     const fetchMyRentals = async () => {
@@ -85,77 +58,199 @@ const MyBookingsScreen = () => {
             setRental(res.data);
         } catch (error) {
             console.error("Error fetching rentals:", error);
+            Alert.alert('Lỗi', 'Không thể tải danh sách yêu cầu thuê xe');
         }
-    }
+    };
 
-    const handleDetailPress = (rental) => {
-        navigation.navigate('BookingDetail', { rental });
-    }
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchMyRentals();
+        setRefreshing(false);
+    }, []);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        console.log("📬 Messages CreateRental:", messagesConfirmedRental);
+        if (
+            (messagesConfirmedRental && messagesConfirmedRental.length > 0) ||
+            (messagesCanceledRental && messagesCanceledRental.length > 0)
+        ) {
+            fetchMyRentals();
+        }
+    }, [messagesConfirmedRental, messagesCanceledRental, renterId]);
+
+    useEffect(() => {
         fetchMyRentals();
         fetchUserId();
     }, []);
 
+    const handleAction = (requestId, action) => {
+        setSelectedRequestId(requestId);
+        setModalAction(action);
+        setModalVisible(true);
+        // Bắt đầu animation cho modal
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handleDetailPress = (rental) => {
+        navigation.navigate('BookingDetail', { rental });
+    };
+
+    const closeModal = () => {
+        Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(() => setModalVisible(false));
+    };
 
     const renderRequestItem = ({ item }) => (
         <TouchableOpacity
             onPress={() => handleDetailPress(item)}
             style={styles.requestCard}
+            activeOpacity={0.8}
         >
-            <Image
-                source={require("../../assets/images/motor-rental-icon-svg.png")}
-                style={styles.bikeImage}
-                resizeMode="cover"
-            />
-            <View style={styles.requestDetails}>
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.orderId}>Order ID: {item.rentalId}</Text>
-                    <Text style={styles.price}>
-                        {item.rentalContract.bike.pricePerDay.toLocaleString('vi-VN')} VNĐ/ngày
+            <LinearGradient
+                colors={['#ffffff', '#f8fafc']}
+                style={styles.cardGradient}
+            >
+                <Image
+                    source={require("../../assets/images/motor-rental-icon-svg.png")}
+                    style={styles.bikeImage}
+                    resizeMode="cover"
+                />
+                <View style={styles.requestDetails}>
+                    <View style={styles.headerRow}>
+                        <Text style={styles.orderId}>Mã đơn: {item.rentalId}</Text>
+                        <Text style={styles.price}>
+                            {item.rentalContract.bike.pricePerDay.toLocaleString('vi-VN')} VNĐ/ngày
+                        </Text>
+                    </View>
+                    <Text style={styles.bikeName}>{item.rentalContract.bike.name}</Text>
+                    <Text style={styles.date}>
+                        Ngày thuê: {new Date(item.startDate).toLocaleDateString('vi-VN')} -{' '}
+                        {new Date(item.endDate).toLocaleDateString('vi-VN')}
                     </Text>
+                    <Text style={styles.address}>
+                        Địa chỉ: {item.rentalContract?.location?.address || 'N/A'}
+                    </Text>
+                    <View
+                        style={[
+                            styles.statusBadge,
+                            {
+                                backgroundColor:
+                                    item.status === 'pending'
+                                        ? '#FEF3C7'
+                                        : item.status === 'confirmed'
+                                        ? '#D1FAE5'
+                                        : item.status === 'cancelled'
+                                        ? '#FEE2E2'
+                                        : item.status === 'active'
+                                        ? '#DBEAFE'
+                                        : item.status === 'completed'
+                                        ? '#D1FAE5' 
+                                        : '#FEE2E2',
+                            },
+                        ]}
+                    >
+                        <Text
+                            style={[
+                                styles.status,
+                                {
+                                    color:
+                                        item.status === 'pending'
+                                            ? '#D97706'
+                                            : item.status === 'confirmed'
+                                            ? '#059669' 
+                                            : item.status === 'cancelled'
+                                            ? '#DC2626'
+                                            : item.status === 'confirmed'
+                                            ? '#2563EB'
+                                            : item.status === 'active'
+                                            ? '#2563EB'
+                                            : item.status === 'completed'
+                                            ? '#16A34A'
+                                            : '#6B7280',
+                                },
+                            ]}
+                        >
+                            {item.status === 'pending'
+                                ? 'Đang chờ duyệt'
+                                : item.status === 'confirmed'
+                                ? 'Đã xác nhận'
+                                : item.status === 'cancelled'
+                                ? 'Đã hủy'
+                                : item.status === 'active'
+                                ? 'Đang thuê'
+                                : item.status === 'completed'
+                                ? 'Hoàn thành'
+                                : item.status}
+                        </Text>
+                    </View>
                 </View>
-                <Text style={styles.bikeName}>{item.rentalContract.bike.name}</Text>
-
-                <Text
-                    style={[
-                        styles.status,
-                        {
-                            color:
-                                item.status === 'pending'
-                                    ? '#F59E0B'
-                                    : item.status === 'Đã chấp nhận'
-                                        ? '#4CAF50'
-                                        : '#EF4444',
-                        },
-                    ]}
-                >
-                    Trạng thái: {item.status}
-                </Text>
-
-            </View>
+            </LinearGradient>
         </TouchableOpacity>
     );
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={['#4CAF50', '#2E7D32']}
+                style={styles.header}
+            >
                 <Text style={styles.headerTitle}>Yêu cầu thuê xe</Text>
-            </View>
+            </LinearGradient>
             <FlatList
                 data={rental}
                 renderItem={renderRequestItem}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.rentalId.toString()}
                 contentContainerStyle={styles.listContainer}
                 ListEmptyComponent={
-                    <Text style={styles.emptyText}>Chưa có yêu cầu thuê xe nào.</Text>
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="bicycle-outline" size={48} color="#6B7280" />
+                        <Text style={styles.emptyText}>Chưa có yêu cầu thuê xe nào.</Text>
+                    </View>
                 }
-                refreshing={refreshing}       
+                refreshing={refreshing}
                 onRefresh={onRefresh}
             />
-
-
+            <Modal
+                animationType="none"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={closeModal}
+            >
+                <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>
+                            {modalAction === 'accept' ? 'Xác nhận yêu cầu' : 'Hủy yêu cầu'}
+                        </Text>
+                        <Text style={styles.modalText}>
+                            Bạn có chắc muốn{' '}
+                            {modalAction === 'accept' ? 'xác nhận' : 'hủy'} yêu cầu này?
+                        </Text>
+                        <View style={styles.modalButtonContainer}>
+                            <TouchableOpacity
+                                style={styles.modalCancelButton}
+                                onPress={closeModal}
+                            >
+                                <Text style={styles.modalButtonText}>Hủy</Text>
+                            </TouchableOpacity>
+                            <LinearGradient
+                                colors={['#4CAF50', '#2E7D32']}
+                                style={styles.modalConfirmButton}
+                            >
+                                <TouchableOpacity onPress={() => { /* Xử lý hành động */ closeModal(); }}>
+                                    <Text style={styles.modalButtonText}>Xác nhận</Text>
+                                </TouchableOpacity>
+                            </LinearGradient>
+                        </View>
+                    </View>
+                </Animated.View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -163,146 +258,151 @@ const MyBookingsScreen = () => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F1F5F9',
     },
     header: {
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#ddd',
+        paddingVertical: 20,
+        paddingHorizontal: 16,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#1F2A44',
-        textAlign: 'center',
+        fontSize: 26,
+        fontWeight: '700',
+        color: '#fff',
+        letterSpacing: 0.5,
     },
     listContainer: {
-        padding: 16,
+        padding: 20,
+        paddingBottom: 100,
     },
     requestCard: {
-        flexDirection: 'row',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        marginBottom: 12,
-        padding: 12,
+        marginBottom: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
         shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 3,
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    cardGradient: {
+        flexDirection: 'row',
+        padding: 16,
     },
     bikeImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 8,
-        marginRight: 12,
+        width: 100,
+        height: 100,
+        borderRadius: 12,
+        marginRight: 16,
     },
     requestDetails: {
         flex: 1,
+        justifyContent: 'center',
     },
-    bikeName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1F2A44',
-        marginBottom: 4,
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
-    renterName: {
-        fontSize: 14,
-        color: '#4B5563',
-        marginBottom: 4,
-    },
-    requestDate: {
-        fontSize: 14,
-        color: '#4B5563',
-        marginBottom: 4,
-    },
-    price: {
-        fontSize: 14,
+    orderId: {
+        fontSize: 16,
         fontWeight: '600',
         color: '#1F2A44',
+    },
+    price: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FF5722',
+    },
+    bikeName: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1F2A44',
+        marginBottom: 6,
+    },
+    date: {
+        fontSize: 14,
+        color: '#6B7280',
         marginBottom: 4,
+    },
+    address: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 8,
+    },
+    statusBadge: {
+        alignSelf: 'flex-start',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
     },
     status: {
         fontSize: 14,
         fontWeight: '600',
     },
-    actionButtons: {
-        flexDirection: 'row',
-        marginTop: 8,
-        gap: 8,
-    },
-    acceptButton: {
-        backgroundColor: '#4CAF50',
-        borderRadius: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-    },
-    cancelButton: {
-        backgroundColor: '#EF4444',
-        borderRadius: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-    },
-    buttonText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#fff',
-        textAlign: 'center',
+    emptyContainer: {
+        alignItems: 'center',
+        marginTop: 40,
     },
     emptyText: {
-        fontSize: 16,
+        fontSize: 18,
         color: '#6B7280',
         textAlign: 'center',
-        marginTop: 20,
+        marginTop: 12,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContainer: {
-        width: '80%',
+        width: '85%',
         backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 20,
+        borderRadius: 16,
+        padding: 24,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 5,
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 8,
     },
     modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 22,
+        fontWeight: '700',
         color: '#1F2A44',
-        marginVertical: 12,
+        marginBottom: 16,
     },
     modalText: {
         fontSize: 16,
         color: '#4B5563',
         textAlign: 'center',
-        marginBottom: 16,
+        marginBottom: 24,
     },
     modalButtonContainer: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 16,
     },
     modalConfirmButton: {
-        backgroundColor: '#4CAF50',
-        borderRadius: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
     },
     modalCancelButton: {
         backgroundColor: '#EF4444',
-        borderRadius: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
     },
     modalButtonText: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '700',
         color: '#fff',
     },
 });

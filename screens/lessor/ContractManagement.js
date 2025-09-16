@@ -49,13 +49,13 @@ export default function ContractManagement() {
   const getStatusStyle = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return { backgroundColor: '#FFCA28', color: '#1F2A44' };
+        return { backgroundColor: '#FFD700', color: '#1A1A1A' };
       case 'approved':
-        return { backgroundColor: '#22C55E', color: '#fff' };
+        return { backgroundColor: '#10B981', color: '#FFFFFF' };
       case 'rejected':
-        return { backgroundColor: '#FF5722', color: '#fff' };
+        return { backgroundColor: '#EF4444', color: '#FFFFFF' };
       default:
-        return { backgroundColor: '#6B7280', color: '#fff' };
+        return { backgroundColor: '#6B7280', color: '#FFFFFF' };
     }
   };
 
@@ -72,6 +72,10 @@ export default function ContractManagement() {
     }
   };
 
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   const renderItem = ({ item }) => {
     const { contractId, lessor, bike, serviceFee, startDate, endDate, status } = item;
 
@@ -80,7 +84,7 @@ export default function ContractManagement() {
         {/* Header */}
         <View style={styles.cardHeader}>
           <View style={styles.headerLeft}>
-            <Ionicons name="contract-outline" size={24} color="#4CAF50" />
+            <Ionicons name="contract-outline" size={24} color="#10B981" />
             <Text style={styles.contractId}>Mã hợp đồng: {contractId}</Text>
           </View>
           <View style={[styles.statusBadge, getStatusStyle(status)]}>
@@ -92,7 +96,7 @@ export default function ContractManagement() {
 
         {/* Tags */}
         <View style={styles.tagContainer}>
-          <View style={[styles.tag, { backgroundColor: '#4CAF50' }]}>
+          <View style={[styles.tag, { backgroundColor: '#10B981' }]}>
             <Text style={styles.tagText}>{bike?.brand?.name || 'Không rõ'}</Text>
           </View>
         </View>
@@ -106,24 +110,24 @@ export default function ContractManagement() {
 
         {/* Info rows */}
         <View style={styles.infoRow}>
-          <Ionicons name="person-circle-outline" size={20} color="#4CAF50" />
+          <Ionicons name="person-circle-outline" size={20} color="#10B981" />
           <Text style={styles.infoText}>Chủ xe: {bike?.owner?.fullName || 'Không rõ'}</Text>
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name="calendar-outline" size={20} color="#4CAF50" />
+          <Ionicons name="calendar-outline" size={20} color="#10B981" />
           <Text style={styles.infoText}>
             {startDate} - {endDate}
           </Text>
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={20} color="#4CAF50" />
+          <Ionicons name="location-outline" size={20} color="#10B981" />
           <Text style={styles.infoText}>{bike?.location?.name || 'Không rõ'}</Text>
         </View>
 
         {/* Notice for pending */}
-        {status === 'pending' && (
+        {status?.toLowerCase() === 'pending' && (
           <View style={styles.noticeBox}>
-            <Ionicons name="alert-circle-outline" size={20} color="#FFCA28" />
+            <Ionicons name="alert-circle-outline" size={20} color="#FFD700" />
             <Text style={styles.noticeText}>
               Cần khởi tạo hợp đồng để bắt đầu hoạt động.
             </Text>
@@ -132,22 +136,32 @@ export default function ContractManagement() {
 
         {/* Buttons */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('ContractEdit', { contract: item })}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionButtonText}>
-              {status === 'pending' ? 'Khởi tạo hợp đồng' : 'Cập nhật hợp đồng'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.viewButton]}
-            onPress={() => navigation.navigate('ContractDetail', { contractId })}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionButtonText}>Xem chi tiết</Text>
-          </TouchableOpacity>
+          {status?.toLowerCase() === 'pending' ? (
+            <>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('ContractEdit', { contract: item })}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.actionButtonText}>Cập nhật hợp đồng</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.viewButton]}
+                onPress={() => navigation.navigate('ContractDetail', { contractId })}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.actionButtonText}>Xem chi tiết</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.viewButton, styles.fullWidthButton]}
+              onPress={() => navigation.navigate('ContractDetail', { contractId })}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionButtonText}>Xem chi tiết</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -157,7 +171,7 @@ export default function ContractManagement() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size={48} color="#4CAF50" />
+          <ActivityIndicator size={60} color="#10B981" />
           <Text style={styles.loadingText}>Đang tải danh sách hợp đồng...</Text>
         </View>
       </SafeAreaView>
@@ -168,9 +182,9 @@ export default function ContractManagement() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#FF5722" />
+          <Ionicons name="alert-circle-outline" size={80} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchContracts} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchContracts} activeOpacity={0.8}>
             <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
@@ -182,10 +196,13 @@ export default function ContractManagement() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.8}>
+          <Ionicons name="arrow-back" size={28} color="#1F2A44" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Quản lý hợp đồng</Text>
-        <TouchableOpacity onPress={fetchContracts} activeOpacity={0.7}>
+        <TouchableOpacity onPress={fetchContracts} activeOpacity={0.8}>
           <Animated.View style={{ transform: [{ rotate: refreshAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Ionicons name="refresh" size={28} color="#4CAF50" />
+            <Ionicons name="refresh" size={28} color="#10B981" />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -194,7 +211,7 @@ export default function ContractManagement() {
       {/* Danh sách hợp đồng */}
       {contracts.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="document-outline" size={80} color="#6B7280" />
+          <Ionicons name="document-outline" size={100} color="#9CA3AF" />
           <Text style={styles.emptyText}>Chưa có hợp đồng nào</Text>
         </View>
       ) : (
@@ -212,7 +229,7 @@ export default function ContractManagement() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9F9FB',
+    backgroundColor: '#F8FAFC',
     padding: 16,
   },
   header: {
@@ -221,7 +238,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -231,14 +248,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#1F2A44',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#4B5563',
     marginHorizontal: 16,
     marginBottom: 16,
   },
@@ -246,16 +263,15 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    minHeight: 200,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -268,18 +284,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   contractId: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#1F2A44',
     marginLeft: 8,
   },
   statusBadge: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
@@ -290,17 +306,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   amount: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#1F2A44',
     marginBottom: 12,
   },
@@ -318,8 +334,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoText: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 16,
+    color: '#4B5563',
     marginLeft: 8,
   },
   noticeBox: {
@@ -344,7 +360,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#10B981',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
@@ -352,10 +368,13 @@ const styles = StyleSheet.create({
   viewButton: {
     backgroundColor: '#1F2A44',
   },
+  fullWidthButton: {
+    flex: 1,
+  },
   actionButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
@@ -363,10 +382,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
     color: '#1F2A44',
-    marginTop: 12,
+    marginTop: 16,
   },
   errorContainer: {
     flex: 1,
@@ -375,23 +394,23 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#FF5722',
-    marginTop: 12,
+    color: '#EF4444',
+    marginTop: 16,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#10B981',
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginTop: 16,
   },
   retryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   emptyContainer: {
     flex: 1,
@@ -400,10 +419,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#6B7280',
-    marginTop: 12,
+    color: '#4B5563',
+    marginTop: 16,
     textAlign: 'center',
   },
 });

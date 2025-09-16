@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   PermissionsAndroid,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,13 +18,13 @@ import { RNCamera } from 'react-native-camera';
 import { getAuthApi } from '../../utils/useAuthApi';
 import { endpoints } from '../../configs/APIs';
 
-// Các bước tiến độ đơn hàng
+// Các bước tiến độ đơn thuê
 const progressSteps = [
-  { label: 'Đã gửi đơn', icon: 'paper-plane', completedStatus: ['pending', 'confirmed', 'paid', 'shipped', 'delivered'] },
-  { label: 'Chủ xe chấp nhận', icon: 'checkmark', completedStatus: ['confirmed', 'paid', 'shipped', 'delivered'] },
-  { label: 'Thanh toán', icon: 'cash', completedStatus: ['paid', 'shipped', 'delivered'] },
-  { label: 'Bắt đầu thuê', icon: 'bicycle', completedStatus: ['shipped', 'delivered'] },
-  { label: 'Kết thúc thuê', icon: 'flag', completedStatus: ['delivered'] },
+  { label: 'Đã gửi đơn', icon: 'paper-plane', completedStatus: ['pending', 'confirmed', 'active', 'completed'] },
+  { label: 'Chủ xe chấp nhận', icon: 'checkmark', completedStatus: ['confirmed', 'active', 'completed'] },
+  { label: 'Bắt đầu thuê', icon: 'bicycle', completedStatus: ['active', 'completed'] },
+  { label: 'Kết thúc thuê', icon: 'flag', completedStatus: ['completed'] },
+  { label: 'Đơn thuê bị huỷ', icon: 'close', completedStatus: ['cancelled'] }
 ];
 
 const BookingDetailScreen = () => {
@@ -34,6 +35,8 @@ const BookingDetailScreen = () => {
   const [paymentStatus, setPaymentStatus] = useState(rental.paymentStatus || 'pending');
   const [isLoading, setIsLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [rentalDetails, setRentalDetails] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const requestCameraPermission = async () => {
     try {
@@ -60,6 +63,7 @@ const BookingDetailScreen = () => {
       const api = await getAuthApi();
       const response = await api.get(`/rentals/${rental.rentalId}/renter`);
       const rentalData = response.data;
+      setRentalDetails(rentalData);
       setRentalStatus(rentalData.status || 'pending');
       setPaymentStatus(rentalData.paymentStatus || 'pending');
       console.log('Updated rental status:', rentalData.status, 'paymentStatus:', rentalData.paymentStatus);
@@ -68,8 +72,14 @@ const BookingDetailScreen = () => {
       Alert.alert('Lỗi', 'Không thể tải chi tiết đơn thuê');
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   }, [rental.rentalId]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchRentalDetail();
+  }, [fetchRentalDetail]);
 
   useEffect(() => {
     // Cập nhật trạng thái khi rental thay đổi
@@ -78,7 +88,7 @@ const BookingDetailScreen = () => {
 
     // Kiểm tra và hủy đơn nếu quá hạn thanh toán
     const now = new Date();
-    const paymentDeadline = new Date(rental.paymentDeadline || new Date(rental.startDate).getTime());
+    const paymentDeadline = new Date(rental.rentalContract?.startDate);
     if (rentalStatus === 'confirmed' && paymentStatus === 'pending' && now > paymentDeadline) {
       const cancelRental = async () => {
         try {
@@ -110,7 +120,7 @@ const BookingDetailScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchRentalDetail();
-    }, [])
+    }, [fetchRentalDetail])
   );
 
   const handleOpenScanner = useCallback(async (type) => {
@@ -171,11 +181,10 @@ const BookingDetailScreen = () => {
             Alert.alert('DEBUG', '✅ verify-qr pickup gọi xong: ' + JSON.stringify(res.data));
           } catch (err) {
             Alert.alert('DEBUG', '❌ verify-qr pickup lỗi: ' + (err.response?.data?.message || err.message));
-            throw err;   // để nhảy lên catch bên ngoài
+            throw err;
           }
 
           Alert.alert('DEBUG', '✅ Gọi verify-qr pickup thành công');
-          // await api.patch(`/rentals/${rental.rentalId}/status`, { status: 'active' });
           setRentalStatus('active');
           Alert.alert('Thành công', 'Đã xác nhận nhận xe!');
         } else if (qrData.type === 'return') {
@@ -184,7 +193,6 @@ const BookingDetailScreen = () => {
             throw new Error('Đơn thuê không ở trạng thái hợp lệ để trả xe');
           }
           await api.post('/rentals/verify-qr', { rentalId: qrData.rentalId, type: 'return', timestamp: qrData.timestamp });
-          // await api.patch(`/rentals/${rental.rentalId}/status`, { status: 'completed' });
           setRentalStatus('completed');
           Alert.alert('Thành công', 'Đã xác nhận trả xe!');
         } else {
@@ -201,7 +209,6 @@ const BookingDetailScreen = () => {
     },
     [rental.rentalId, rentalStatus, paymentStatus, rental.startDate, rental.endDate, fetchRentalDetail]
   );
-
 
   const onBarCodeRead = useCallback(
     (event) => {
@@ -232,9 +239,9 @@ const BookingDetailScreen = () => {
     discount: 0,
     finalTotal: (rental.totalPrice || rental.rentalContract?.bike?.pricePerDay || 0) + (rental.rentalContract?.serviceFee || 0),
     shippingAddress: rental.rentalContract?.location?.address || 'N/A',
-    paymentDeadline: rental.paymentDeadline
-      ? new Date(rental.paymentDeadline).toLocaleDateString('vi-VN')
-      : new Date(new Date(rental.startDate).getTime() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN'),
+    paymentDeadline: rental.rentalContract?.startDate
+      ? new Date(rental.rentalContract?.startDate).toLocaleDateString('vi-VN')
+      : 'N/A',
     startDate: rental.startDate ? new Date(rental.startDate).toLocaleDateString('vi-VN') : 'N/A',
     endDate: rental.endDate ? new Date(rental.endDate).toLocaleDateString('vi-VN') : 'N/A',
   };
@@ -273,7 +280,12 @@ const BookingDetailScreen = () => {
           </RNCamera>
         </View>
       ) : (
-        <ScrollView style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4CAF50']} />
+          }
+        >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
@@ -285,7 +297,7 @@ const BookingDetailScreen = () => {
 
           {/* Thanh tiến độ */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tiến độ đơn hàng</Text>
+            <Text style={styles.sectionTitle}>Tiến độ đơn thuê</Text>
             <View style={styles.progressContainer}>
               {progressSteps.map((step, index) => (
                 <View key={index} style={styles.progressStep}>
@@ -305,9 +317,9 @@ const BookingDetailScreen = () => {
 
           {/* Thông tin đơn hàng */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Thông tin đơn hàng</Text>
+            <Text style={styles.sectionTitle}>Thông tin đơn thuê</Text>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Mã đơn hàng:</Text>
+              <Text style={styles.label}>Mã đơn thuê:</Text>
               <Text style={styles.value}>{orderDetails.orderId}</Text>
             </View>
             <View style={styles.infoRow}>
@@ -319,7 +331,7 @@ const BookingDetailScreen = () => {
               <Text style={styles.value}>{orderDetails.renterName}</Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Người bán:</Text>
+              <Text style={styles.label}>Chủ xe:</Text>
               <Text style={styles.value}>{orderDetails.ownerName}</Text>
             </View>
             <View style={styles.infoRow}>
@@ -327,7 +339,7 @@ const BookingDetailScreen = () => {
               <Text style={[styles.value, { color: rentalStatus === 'pending' ? '#F59E0B' : '#4CAF50' }]}>
                 {rentalStatus === 'pending'
                   ? 'Đang chờ duyệt'
-                  : rentalStatus === 'shipped'
+                  : rentalStatus === 'active'
                     ? 'Đang thuê'
                     : rentalStatus === 'delivered'
                       ? 'Hoàn thành'
@@ -339,11 +351,7 @@ const BookingDetailScreen = () => {
               </Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Hạn thanh toán:</Text>
-              <Text style={styles.value}>{orderDetails.paymentDeadline}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Ngày thuê:</Text>
+              <Text style={styles.label}>Thời gian thuê:</Text>
               <Text style={styles.value}>{`${orderDetails.startDate} - ${orderDetails.endDate}`}</Text>
             </View>
           </View>

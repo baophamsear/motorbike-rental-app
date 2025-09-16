@@ -150,29 +150,27 @@ export default function Register() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Congratulations</Text>
-      <Text style={styles.subtitle}>on verifying the email belongs to you</Text>
-      <Text style={styles.signUp}>Sign up</Text>
-      <Text style={styles.needMore}>we need something more</Text>
+      <Text style={styles.signUp}>Đăng ký</Text>
+      <Text style={styles.needMore}>Khám phá nhiều hơn</Text>
 
       <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
         {avatarUri ? (
           <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
         ) : (
-          <Text style={styles.avatarPlaceholder}>Select Avatar</Text>
+          <Text style={styles.avatarPlaceholder}>Chọn Ảnh</Text>
         )}
       </TouchableOpacity>
 
       <TextInput
         style={styles.input}
-        placeholder="Full name"
+        placeholder="Tên tài khoản"
         value={fullName}
         onChangeText={(text) => handleInputChange('fullName', text)}
       />
 
       <TextInput
         style={styles.input}
-        placeholder="yourmail@example.com"
+        placeholder="Email đăng nhập"
         keyboardType="email-address"
         value={email}
         onChangeText={(text) => handleInputChange('email', text)}
@@ -185,7 +183,7 @@ export default function Register() {
 
       <TextInput
         style={styles.input}
-        placeholder="Passcode"
+        placeholder="Mật khẩu"
         secureTextEntry
         value={passcode}
         onChangeText={(text) => handleInputChange('passcode', text)}
@@ -193,15 +191,15 @@ export default function Register() {
 
       <TextInput
         style={styles.input}
-        placeholder="Confirm passcode"
+        placeholder="Xác nhận mật khẩu"
         secureTextEntry
         value={confirmPasscode}
         onChangeText={(text) => handleInputChange('confirmPasscode', text)}
       />
 
-      <Text style={styles.userTypeLabel}>TYPE OF USER</Text>
+      <Text style={styles.userTypeLabel}>Loại người sử dụng</Text>
       <View style={styles.radioContainer}>
-        {['renter', 'lessor'].map((type) => (
+        {['Người thuê', 'Người cho thuê'].map((type) => (
           <TouchableOpacity
             key={type}
             style={styles.radioItem}
@@ -222,10 +220,10 @@ export default function Register() {
         onPress={handleSubmit}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>{loading ? 'Processing...' : 'Submit'}</Text>
+        <Text style={styles.buttonText}>{loading ? 'Đang xử lý...' : 'Đăng ký'}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.backToLogin}>back to login</Text>
+      <Text style={styles.backToLogin}>Trở về đăng nhập</Text>
     </View>
   );
 }

@@ -32,24 +32,6 @@ export default function RentalDetailScreen() {
 
   const api = getAuthApi();
 
-  const requestCameraPermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.CAMERA,
-        {
-          title: 'Yêu cầu quyền truy cập Camera',
-          message: 'Ứng dụng cần quyền truy cập camera để quét mã QR.',
-          buttonNeutral: 'Hỏi lại sau',
-          buttonNegative: 'Hủy',
-          buttonPositive: 'Đồng ý',
-        }
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    } catch (err) {
-      console.warn(err);
-      return false;
-    }
-  };
 
   const fetchRentalDetail = useCallback(async () => {
     setIsLoading(true);
@@ -65,19 +47,7 @@ export default function RentalDetailScreen() {
       console.log('API response:', JSON.stringify(response.data, null, 2));
 
       // Dữ liệu mẫu gốc
-      const rentalData = response.data || {
-        rentalId: '43',
-        renterId: '5',
-        startDate: '2025-09-12', // Có thể điều chỉnh thành '2025-09-10' hoặc '2025-09-13' để kiểm tra
-        endDate: '2025-09-20',
-        totalPrice: 220000,
-        createdAt: '2025-09-08T19:34:32',
-        status: 'confirmed',
-        rentalContract: { bike: { bikeId: 2, name: 'Honda Wave' }, location: { address: '123 Đường Láng, Hà Nội' } },
-        renter: { email: 'user@example.com', avatarUrl: null },
-        paymentStatus: 'paid',
-        cancelledBy: null,
-      };
+      const rentalData = response.data;
 
       let normalizedRental = {
         rentalId: rentalData.rentalId || 'N/A',
@@ -86,23 +56,23 @@ export default function RentalDetailScreen() {
           avatarUrl: rentalData.renter?.avatarUrl || null,
         },
         rentalContract: {
-          bike: { 
+          bike: {
             name: rentalData.rentalContract?.bike?.name || 'N/A',
             bikeId: rentalData.rentalContract?.bike?.bikeId || null,
           },
           location: { address: rentalData.rentalContract?.location?.address || 'N/A' },
         },
-        startDate: rentalData.startDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        endDate: rentalData.endDate || new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+        startDate: rentalData.startDate || 'N/A',
+        endDate: rentalData.endDate || 'N/A',
         status: rentalData.status || 'confirmed',
-        totalPrice: rentalData.totalPrice || 300000,
-        paymentDeadline: rentalData.paymentDeadline || new Date(new Date(rentalData.startDate).getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        totalPrice: rentalData.totalPrice || 'N/A',
+        paymentDeadline: rentalData.startDate,
         createdAt: rentalData.createdAt || new Date().toISOString(),
-        paymentStatus: rentalData.paymentStatus || 'paid',
+        paymentStatus: rentalData.paymentStatus || 'pending',
         cancelledBy: rentalData.cancelledBy || null,
       };
 
-      const now = new Date('2025-09-12T15:11:00+07:00');
+      const now = new Date();
       const startDate = new Date(normalizedRental.startDate);
       const endDate = new Date(normalizedRental.endDate);
       const paymentDeadline = new Date(normalizedRental.paymentDeadline);
@@ -110,21 +80,26 @@ export default function RentalDetailScreen() {
       // Kiểm tra và tự động hủy nếu quá hạn xác nhận
       if (normalizedRental.status === 'pending' && normalizedRental.createdAt) {
         const createdAt = new Date(normalizedRental.createdAt);
-        const confirmationDeadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
-        if (now > confirmationDeadline) {
-          await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
-          normalizedRental.status = 'cancelled';
-          normalizedRental.cancelledBy = 'system';
-          console.log('Rental auto-cancelled due to expired confirmation deadline');
+        if (!isNaN(createdAt.getTime())) {
+          const confirmationDeadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+          if (now > confirmationDeadline) {
+            await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
+            normalizedRental.status = 'cancelled';
+            normalizedRental.cancelledBy = 'system';
+            console.log('Rental auto-cancelled due to expired confirmation deadline');
+          }
         }
       }
 
       // Kiểm tra và tự động hủy nếu quá hạn thanh toán
       if (normalizedRental.status === 'confirmed' && normalizedRental.paymentStatus === 'pending' && now > paymentDeadline) {
-        await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
-        normalizedRental.status = 'cancelled';
-        normalizedRental.cancelledBy = 'system';
-        console.log('Rental auto-cancelled due to expired payment deadline');
+        const paymentDeadline = new Date(normalizedRental.startDate);
+        if (!isNaN(paymentDeadline.getTime()) && now > paymentDeadline) {
+          await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
+          normalizedRental.status = 'cancelled';
+          normalizedRental.cancelledBy = 'system';
+          console.log('Rental auto-cancelled due to expired payment deadline');
+        }
       }
 
       // Kiểm tra quá hạn hoặc không nhận xe
@@ -166,7 +141,7 @@ export default function RentalDetailScreen() {
   const calculateTimeStatus = useCallback(() => {
     if (!rental) return null;
 
-    const now = new Date('2025-09-12T15:11:00+07:00');
+    const now = new Date();
     let targetDate, label, isOverdue = false, paymentInfo = null;
 
     if (rental.status === 'pending' && rental.createdAt) {
@@ -195,6 +170,13 @@ export default function RentalDetailScreen() {
       } else {
         return { label: 'Đã quá hạn', isOverdue: true };
       }
+
+    } else if (rental.status === 'confirmed') {
+      const paymentDeadline = new Date(rental.paymentDeadline);
+      targetDate = paymentDeadline;
+      label = 'Thông tin thanh toán';
+      isOverdue = now > targetDate;
+      paymentInfo = rental.paymentStatus === 'pending' ? 'Chưa thanh toán' : 'Đã thanh toán';
     } else if (rental.status === 'violated') {
       return { label: 'Đơn thuê vi phạm (quá hạn)', isOverdue: true };
     } else if (rental.status === 'completed') {
@@ -289,7 +271,10 @@ export default function RentalDetailScreen() {
               await api.patch(`/rentals/${rentalId}/status`, { status: 'confirmed' });
               const res = await api.get(endpoints['getRentalById'](rentalId));
               const rentalData = res.data;
-              await updateBikeStatus(rentalData.rentalContract.bike.bikeId, 'rented');
+
+              setRental(prev => ({ ...prev, status: 'confirmed' }));
+
+              // await updateBikeStatus(rentalData.rentalContract.bike.bikeId, 'rented');
               Alert.alert('Thành công', 'Đơn thuê đã được xác nhận!');
               fetchRentalDetail();
             } catch (err) {
@@ -315,8 +300,7 @@ export default function RentalDetailScreen() {
           onPress: async () => {
             try {
               const api = await getAuthApi();
-              await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled'});
-              await updateBikeStatus(rental.rentalContract.bike.bikeId, 'available');
+              await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
               Alert.alert('Thành công', 'Đơn thuê đã bị hủy!');
               fetchRentalDetail();
             } catch (err) {
@@ -457,7 +441,7 @@ export default function RentalDetailScreen() {
   }
 
   const isWithinRentalPeriod = () => {
-    const now = new Date('2025-09-12T15:11:00+07:00');
+    const now = new Date();
     const startDate = new Date(rental.startDate);
     const endDate = new Date(rental.endDate);
     return now >= startDate && now <= endDate;

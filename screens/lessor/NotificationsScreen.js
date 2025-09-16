@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import axios from 'axios';
 import moment from 'moment';
 import 'moment/locale/vi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,10 +43,14 @@ const NotificationsScreen = () => {
     try {
       const api = await getAuthApi();
       const response = await api.get(endpoints['notifications']);
-      setNotifications(response.data);
+      console.log('API Response:', response.data); // Ghi log để debug
+      const sortedNotifications = response.data
+        .filter(item => item.timestamp) // Lọc bỏ thông báo không có timestamp
+        .sort((a, b) => moment(b.timestamp).diff(moment(a.timestamp)));
+      setNotifications(sortedNotifications);
       setLoading(false);
       setRefreshing(false);
-      await AsyncStorage.setItem('notifications', JSON.stringify(response.data));
+      await AsyncStorage.setItem('notifications', JSON.stringify(sortedNotifications));
     } catch (err) {
       setError('Lỗi khi tải thông báo: ' + err.message);
       setLoading(false);
@@ -61,7 +64,11 @@ const NotificationsScreen = () => {
       try {
         const stored = await AsyncStorage.getItem('notifications');
         if (stored) {
-          setNotifications(JSON.parse(stored));
+          const parsed = JSON.parse(stored).filter(item => item.timestamp);
+          console.log('Stored notifications:', parsed); // Ghi log để debug
+          setNotifications(parsed.sort((a, b) =>
+            moment(b.timestamp).diff(moment(a.timestamp))
+          ));
         }
       } catch (err) {
         console.error('Lỗi khi load từ AsyncStorage:', err);
@@ -72,14 +79,7 @@ const NotificationsScreen = () => {
     loadLocalNotifications();
   }, []);
 
-  // Memoize topic để tránh thay đổi không cần thiết
-  // const memoizedTopic = useMemo(() => {
-  //   const lessorId = null;
-  //   lessorId? topics.lessor.pendingContract(lessorId) : null;
-  // }, [lessorId]);
-
-  // Lắng nghe WebSocket khi có lessorId
-
+  // WebSocket listeners
   const topicInit = lessorId ? topics.lessor.pendingContract(lessorId) : null;
   const topicActive = lessorId ? topics.lessor.activeContract(lessorId) : null;
   const topicReject = lessorId ? topics.lessor.rejectContract(lessorId) : null;
@@ -91,32 +91,11 @@ const NotificationsScreen = () => {
   const { messages: messagesCreateRental } = useWebSocket(topicCreateRental);
 
   useEffect(() => {
-    console.log("📬 Messages Init:", messagesInit);
-    if (messagesInit && messagesInit.length > 0) {
+    if (messagesInit?.length > 0 || messagesActive?.length > 0 ||
+        messagesReject?.length > 0 || messagesCreateRental?.length > 0) {
       fetchNotifications();
     }
-  }, [messagesInit, lessorId]);
-
-  useEffect(() => {
-    console.log("📬 Messages Active:", messagesActive);
-    if (messagesActive && messagesActive.length > 0) {
-      fetchNotifications();
-    }
-  }, [messagesActive, lessorId]);
-
-  useEffect(() => {
-    console.log("📬 Messages Reject:", messagesReject);
-    if (messagesReject && messagesReject.length > 0) {
-      fetchNotifications();
-    }
-  }, [messagesReject, lessorId]);
-
-  useEffect(() => {
-    console.log("📬 Messages CreateRental:", messagesCreateRental)
-    if (messagesCreateRental && messagesCreateRental.length > 0) {
-      fetchNotifications();
-    }
-  }, [messagesCreateRental, lessorId]);
+  }, [messagesInit, messagesActive, messagesReject, messagesCreateRental]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -124,7 +103,22 @@ const NotificationsScreen = () => {
   }, []);
 
   const getRelativeTime = (dateString) => {
-    return moment(dateString).fromNow();
+    if (!dateString) {
+      console.error('Date string is undefined or null');
+      return 'Vừa xong';
+    }
+    // Hỗ trợ nhiều định dạng thời gian, bao gồm ISO 8601
+    const parsedDate = moment(dateString, [
+      'YYYY-MM-DD HH:mm:ss.SSSSSS',
+      'YYYY-MM-DD HH:mm:ss',
+      'YYYY-MM-DDTHH:mm:ss.SSSSSS',
+      moment.ISO_8601
+    ], true);
+    if (!parsedDate.isValid()) {
+      console.error('Invalid date format:', dateString);
+      return 'Vừa xong';
+    }
+    return parsedDate.fromNow();
   };
 
   const renderItem = ({ item, index }) => (
@@ -132,14 +126,13 @@ const NotificationsScreen = () => {
       entering={FadeInDown.delay(index * 100).duration(500)}
       style={styles.itemContainer}
     >
-      <TouchableOpacity style={styles.itemContent}>
+      <TouchableOpacity style={styles.itemContent} activeOpacity={0.8}>
         <View style={styles.iconContainer}>
-          <Icon name="notifications" size={24} color="#007AFF" />
+          <Icon name="notifications" size={24} color="#4CAF50" />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.message}>{item.message}</Text>
-          <Text style={styles.createdAt}>{getRelativeTime(item.created_at)}</Text>
-          <Text style={styles.userId}>User ID: {item.user_id}</Text>
+          <Text style={styles.createdAt}>{getRelativeTime(item.timestamp)}</Text>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -147,7 +140,7 @@ const NotificationsScreen = () => {
 
   const renderEmptyComponent = () => (
     <View style={styles.emptyContainer}>
-      <Icon name="notifications-off" size={64} color="#999" />
+      <Icon name="notifications-off" size={64} color="#6B7280" />
       <Text style={styles.emptyText}>Không có thông báo nào</Text>
       <Text style={styles.emptySubText}>Kéo xuống để làm mới</Text>
     </View>
@@ -156,7 +149,7 @@ const NotificationsScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <LinearGradient colors={['#4B79A1', '#283E51']} style={styles.loadingContainer}>
+        <LinearGradient colors={['#4CAF50', '#2E7D32']} style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Đang tải thông báo...</Text>
         </LinearGradient>
       </SafeAreaView>
@@ -166,7 +159,7 @@ const NotificationsScreen = () => {
   if (error) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <LinearGradient colors={['#4B79A1', '#283E51']} style={styles.loadingContainer}>
+        <LinearGradient colors={['#4CAF50', '#2E7D32']} style={styles.loadingContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </LinearGradient>
       </SafeAreaView>
@@ -175,20 +168,20 @@ const NotificationsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#4B79A1', '#283E51']} style={styles.container}>
+      <LinearGradient colors={['#4CAF50', '#2E7D32']} style={styles.header}>
         <Text style={styles.title}>Thông Báo</Text>
-        <FlatList
-          data={notifications}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString()}
-          ListEmptyComponent={renderEmptyComponent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-          }
-          contentContainerStyle={styles.listContent}
-          initialNumToRender={10}
-        />
       </LinearGradient>
+      <FlatList
+        data={notifications}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={renderEmptyComponent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />
+        }
+        contentContainerStyle={styles.listContent}
+        initialNumToRender={10}
+      />
     </SafeAreaView>
   );
 };
@@ -196,60 +189,67 @@ const NotificationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F1F5F9',
+  },
+  header: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#fff',
-    textAlign: 'center',
-    marginVertical: 20,
+    letterSpacing: 0.5,
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   itemContainer: {
-    marginBottom: 12,
-    borderRadius: 12,
+    marginBottom: 16,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   itemContent: {
     flexDirection: 'row',
     padding: 16,
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E6F0FA',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#D1FAE5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   textContainer: {
     flex: 1,
   },
   message: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: '600',
+    color: '#1F2A44',
+    marginBottom: 4,
   },
   createdAt: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  userId: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
+    fontSize: 14,
+    color: '#6B7280',
   },
   loadingContainer: {
     flex: 1,
@@ -259,10 +259,12 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     color: '#fff',
+    fontWeight: '600',
   },
   errorText: {
     fontSize: 18,
-    color: '#FF6B6B',
+    color: '#EF4444',
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
@@ -272,13 +274,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#fff',
+    color: '#6B7280',
     marginTop: 16,
     fontWeight: '600',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#ccc',
+    color: '#6B7280',
     marginTop: 8,
   },
 });

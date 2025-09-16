@@ -21,11 +21,13 @@ const styles = StyleSheet.create({
   },
   signUp: {
     textAlign: 'center',
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#1a1a52',
+    marginTop: 50
   },
   needMore: {
+    fontSize: 25,
     textAlign: 'center',
     marginBottom: 20,
     color: '#444',
@@ -65,6 +67,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   radioContainer: {
+    marginTop: 10,
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 24,
@@ -102,6 +105,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 22
   },
   backToLogin: {
     marginTop: 20,

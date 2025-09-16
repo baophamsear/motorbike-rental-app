@@ -31,11 +31,10 @@ export default function MotorManagement() {
         throw new Error('Không thể khởi tạo API client');
       }
       const response = await api.get(endpoints['myMotor']);
-      console.log('Fetched motors:', response.data);
       setMotors(Array.isArray(response.data) ? response.data : []);
       Animated.timing(refreshAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }).start(() => refreshAnim.setValue(0));
     } catch (error) {
@@ -53,13 +52,17 @@ export default function MotorManagement() {
   const getStatusStyle = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return { backgroundColor: '#FFCA28', color: '#1F2A44' };
+        return { backgroundColor: '#FFD700', color: '#1A1A1A' };
       case 'approved':
-        return { backgroundColor: '#22C55E', color: '#fff' };
+        return { backgroundColor: '#10B981', color: '#FFFFFF' };
       case 'rejected':
-        return { backgroundColor: '#FF5722', color: '#fff' };
+        return { backgroundColor: '#EF4444', color: '#FFFFFF' };
+      case 'rented':
+        return { backgroundColor: '#3B82F6', color: '#FFFFFF' };
+      case 'available':
+        return { backgroundColor: '#34D399', color: '#FFFFFF' };
       default:
-        return { backgroundColor: '#6B7280', color: '#fff' };
+        return { backgroundColor: '#6B7280', color: '#FFFFFF' };
     }
   };
 
@@ -71,31 +74,35 @@ export default function MotorManagement() {
         return 'Đã duyệt';
       case 'rejected':
         return 'Bị từ chối';
+      case 'rented':
+        return 'Đang cho thuê';
+      case 'available':
+        return 'Có sẵn';        
       default:
         return 'Không rõ';
     }
   };
 
   const handleAddMotor = () => {
-    console.log('Navigate to add motor screen');
-    navigation.navigate('AddMotorbike'); // Uncomment when navigation is implemented
+    navigation.navigate('AddMotorbike');
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
   };
 
   const renderMotorItem = ({ item }) => (
     <View style={styles.card}>
-      {/* Ảnh xe */}
       <View style={styles.imageContainer}>
         {item.imageUrl?.length > 0 ? (
           <Image source={{ uri: item.imageUrl[0] }} style={styles.bikeImage} />
         ) : (
           <View style={styles.placeholderImage}>
-            <Ionicons name="image-outline" size={40} color="#6B7280" />
+            <Ionicons name="image-outline" size={48} color="#9CA3AF" />
             <Text style={styles.placeholderText}>Không có ảnh</Text>
           </View>
         )}
       </View>
-
-      {/* Thông tin xe */}
       <View style={styles.infoContainer}>
         <Text style={styles.bikeName}>{item.name || 'Không rõ'}</Text>
         <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
@@ -107,8 +114,6 @@ export default function MotorManagement() {
           Hãng: {item.brand?.name || 'Không rõ'} | Địa điểm: {item.location?.name || 'Không rõ'}
         </Text>
       </View>
-
-      {/* Ảnh giấy tờ */}
       <View style={styles.licenseImageRow}>
         {item.licensePlate?.length > 0 ? (
           item.licensePlate.slice(0, 2).map((uri, index) => (
@@ -116,20 +121,18 @@ export default function MotorManagement() {
           ))
         ) : (
           <View style={styles.placeholderLicense}>
-            <Ionicons name="document-outline" size={24} color="#6B7280" />
+            <Ionicons name="document-outline" size={32} color="#9CA3AF" />
             <Text style={styles.placeholderText}>Không có giấy tờ</Text>
           </View>
         )}
       </View>
-
-      {/* Nút xem chi tiết */}
       <TouchableOpacity
         style={styles.viewButton}
-        onPress={() => console.log('Navigate to motor detail:', item.motorId || item.id)}
-        activeOpacity={0.7}
+        onPress={() => navigation.navigate('MotorDetail', { motorId: item.bikeId })}
+        activeOpacity={0.8}
       >
-        <Text style={styles.viewButtonText}>Xem chi tiết</Text>
-        <Ionicons name="chevron-forward" size={20} color="#fff" />
+        <Text style={styles.viewButtonText} onPress={() => navigation.navigate('MotorDetail', { motorId: item.bikeId })}>Xem chi tiết</Text>
+        <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -138,7 +141,7 @@ export default function MotorManagement() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size={48} color="#4CAF50" />
+          <ActivityIndicator size={60} color="#10B981" />
           <Text style={styles.loadingText}>Đang tải danh sách xe...</Text>
         </View>
       </SafeAreaView>
@@ -149,12 +152,12 @@ export default function MotorManagement() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#FF5722" />
+          <Ionicons name="alert-circle-outline" size={80} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={fetchMotors}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
@@ -165,32 +168,34 @@ export default function MotorManagement() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={handleAddMotor} activeOpacity={0.7}>
-          <Ionicons name="add-circle" size={24} color="#4CAF50" />
-          <Text style={styles.headerButtonText}>Thêm xe</Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.8}>
+          <Ionicons name="arrow-back" size={28} color="#1F2A44" />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>YoMotor</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={fetchMotors} activeOpacity={0.7}>
-          <Animated.View style={{ transform: [{ rotate: refreshAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Ionicons name="refresh" size={24} color="#4CAF50" />
-          </Animated.View>
-          <Text style={styles.headerButtonText}>Làm mới</Text>
-        </TouchableOpacity>
+        
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleAddMotor} activeOpacity={0.8}>
+            <Ionicons name="add-circle" size={28} color="#10B981" />
+            <Text style={styles.headerButtonText}>Thêm xe</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton} onPress={fetchMotors} activeOpacity={0.8}>
+            <Animated.View style={{ transform: [{ rotate: refreshAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+              <Ionicons name="refresh" size={28} color="#10B981" />
+            </Animated.View>
+            <Text style={styles.headerButtonText}>Làm mới</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.subtitleContainer}>
         <Text style={styles.subtitle}>Quản lý xe thông minh</Text>
         <Text style={styles.motorCount}>{motors.length} xe</Text>
       </View>
-
-      {/* Danh sách xe */}
       {motors.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="car-outline" size={80} color="#6B7280" />
+          <Ionicons name="car-outline" size={100} color="#9CA3AF" />
           <Text style={styles.emptyText}>Chưa có xe nào được đăng ký</Text>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddMotor} activeOpacity={0.7}>
-            <Ionicons name="add-circle" size={20} color="#fff" />
+          <TouchableOpacity style={styles.addButton} onPress={handleAddMotor} activeOpacity={0.8}>
+            <Ionicons name="add-circle" size={24} color="#FFFFFF" />
             <Text style={styles.addButtonText}>Thêm xe mới</Text>
           </TouchableOpacity>
         </View>
@@ -209,40 +214,43 @@ export default function MotorManagement() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9F9FB',
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    padding: 8,
     borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    backgroundColor: '#F3F4F6',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
+    padding: 10,
+    borderRadius: 12,
     backgroundColor: '#F3F4F6',
   },
   headerButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#4CAF50',
-    marginLeft: 6,
+    color: '#10B981',
+    marginLeft: 8,
   },
   pageTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#1F2A44',
     letterSpacing: 0.5,
@@ -251,34 +259,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginHorizontal: 20,
+    marginVertical: 16,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#4B5563',
   },
   motorCount: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#4CAF50',
+    color: '#10B981',
+    backgroundColor: '#D1FAE5',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 12,
   },
   listContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     marginBottom: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    minHeight: 360, // Đảm bảo card có chiều cao cố định
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   imageContainer: {
     borderRadius: 12,
@@ -288,28 +299,27 @@ const styles = StyleSheet.create({
   },
   bikeImage: {
     width: '100%',
-    height: 180, // Chiếm ~50% chiều cao card
+    height: 200,
     resizeMode: 'cover',
   },
   placeholderImage: {
     width: '100%',
-    height: 180,
+    height: 200,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#9CA3AF',
     marginTop: 8,
   },
   infoContainer: {
     marginBottom: 12,
-    flex: 1,
   },
   bikeName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1F2A44',
     marginBottom: 8,
@@ -317,37 +327,37 @@ const styles = StyleSheet.create({
   statusBadge: {
     alignSelf: 'flex-start',
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     marginBottom: 8,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
   bikeInfo: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '400',
-    color: '#6B7280',
-    lineHeight: 20,
+    color: '#4B5563',
+    lineHeight: 24,
   },
   licenseImageRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     marginBottom: 12,
-    gap: 8,
+    gap: 12,
   },
   licenseImage: {
-    width: 80,
-    height: 60,
+    width: 100,
+    height: 70,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   placeholderLicense: {
-    width: 80,
-    height: 60,
+    width: 100,
+    height: 70,
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     justifyContent: 'center',
@@ -359,7 +369,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#10B981',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -367,76 +377,76 @@ const styles = StyleSheet.create({
   viewButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#FFFFFF',
     marginRight: 8,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#10B981',
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginTop: 16,
   },
   addButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#FFFFFF',
     marginLeft: 8,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9F9FB',
+    backgroundColor: '#F8FAFC',
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
     color: '#1F2A44',
-    marginTop: 12,
+    marginTop: 16,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F9F9FB',
+    padding: 20,
+    backgroundColor: '#F8FAFC',
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#FF5722',
-    marginTop: 12,
+    color: '#EF4444',
+    marginTop: 16,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 26,
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#10B981',
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginTop: 16,
   },
   retryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#6B7280',
-    marginTop: 12,
+    color: '#4B5563',
+    marginTop: 16,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 26,
   },
 });
