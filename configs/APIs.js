@@ -37,6 +37,8 @@ export const endpoints = {
     'getStats': 'rentals/stats',
     'getMotorById': '/bikes/get-by-id',
     'getContractById': (id) => `/contracts/${id}`,
+    'me': '/users/me',
+    'createZaloPayOrder': '/zalopay/create-order',
 }
 
 export default axios.create({

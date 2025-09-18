@@ -9,14 +9,17 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import DatePicker from 'react-native-date-picker';
 import { endpoints } from '../../configs/APIs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuthApi } from '../../utils/useAuthApi';
 import jwt_decode from 'jwt-decode';
 import { useNavigation } from '@react-navigation/native';
+import { WebView } from 'react-native-webview';
 
 export default function PaymentBookingScreen({ route }) {
   const { rental } = route.params || {};
@@ -27,14 +30,17 @@ export default function PaymentBookingScreen({ route }) {
   const [isEndOpen, setIsEndOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [orderId, setOrderId] = useState(null);
+  const [paymentUrl, setPaymentUrl] = useState(null);
+  const [appTransId, setAppTransId] = useState(null);
+  const [useWebView, setUseWebView] = useState(false);
   const navigation = useNavigation();
 
   const paymentMethods = [
     { name: 'Momo', icon: 'wallet' },
     { name: 'VNPay', icon: 'card' },
+    { name: 'ZaloPay', icon: 'cash-outline' },
   ];
 
-  // Xử lý trạng thái: ánh xạ rental.rentalContract.status nếu rental.status là null
   const rentalStatus = rental?.status || (rental?.rentalContract?.status === 'active' ? 'confirmed' : 'pending');
 
   const fetchUser = async () => {
@@ -50,9 +56,72 @@ export default function PaymentBookingScreen({ route }) {
     }
   };
 
+  const checkStatus = async (appTransId, retries = 3, delay = 1000) => {
+    try {
+      const api = await getAuthApi();
+      const response = await api.get(`http://192.168.1.7:8080/api/zalopay/checkstatus/${appTransId}`);
+      const { returncode, returnmessage } = response.data;
+
+      if (returncode === 1 && returnmessage === 'Giao dịch thành công') {
+        // Thanh toán thành công, gọi updateActiveRental
+        try {
+          const rentalId = rental?.rentalId;
+          const days = getDays(startDate, endDate);
+          const totalAmount = (rental?.rentalContract?.bike?.pricePerDay || 0) * days + (rental?.rentalContract?.serviceFee || 0);
+
+          if (!rentalId || !startDate || !endDate || !totalAmount) {
+            throw new Error('Thiếu thông tin để cập nhật đơn hàng.');
+          }
+
+          await api.patch(endpoints.updateActiveRental(rentalId), {
+            startDate: startDate.toISOString().split('T')[0], // Định dạng YYYY-MM-DD
+            endDate: endDate.toISOString().split('T')[0], // Định dạng YYYY-MM-DD
+            totalAmount,
+          });
+          console.log('updateActiveRental response:', { rentalId, startDate, endDate, totalAmount });
+          Alert.alert('Thành công', 'Thanh toán ZaloPay thành công và đơn hàng đã được cập nhật!');
+          navigation.navigate('Home');
+        } catch (updateError) {
+          console.error('Lỗi khi cập nhật đơn hàng:', updateError.response?.data || updateError.message);
+          Alert.alert('Lỗi', 'Thanh toán thành công nhưng không thể cập nhật đơn hàng: ' + (updateError.message || 'Lỗi không xác định'));
+        }
+      } else {
+        throw new Error(returnmessage || 'Kiểm tra trạng thái thất bại.');
+      }
+    } catch (error) {
+      if (retries > 0) {
+        console.log(`Thử lại checkStatus, còn ${retries} lần...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return checkStatus(appTransId, retries - 1, delay);
+      }
+      console.error('Lỗi khi kiểm tra trạng thái ZaloPay:', error.response?.data || error.message);
+      Alert.alert('Lỗi', 'Kiểm tra trạng thái thanh toán ZaloPay thất bại: ' + (error.response?.data?.returnmessage || error.message));
+    }
+  };
+
   useEffect(() => {
     fetchUser();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Màn hình PaymentBookingScreen được focus, kiểm tra trạng thái thanh toán...');
+      if (appTransId && selectedPaymentMethod === 'ZaloPay') {
+        console.log('Gọi checkStatus với appTransId:', appTransId);
+        checkStatus(appTransId);
+      }
+      // Có thể reset trạng thái nếu muốn reload giao diện
+      // setStartDate(null);
+      // setEndDate(null);
+      // setSelectedPaymentMethod(null);
+      // setPaymentUrl(null);
+      // setUseWebView(false);
+
+      return () => {
+        console.log('Màn hình PaymentBookingScreen mất focus.');
+      };
+    }, [appTransId, selectedPaymentMethod])
+  );
 
   const normalizeDate = (date) => {
     const d = new Date(date);
@@ -101,29 +170,17 @@ export default function PaymentBookingScreen({ route }) {
             bankCode: 'NCB',
           },
         });
-        console.log('VNPay response:', response.data);
-
-        const paymentUrl = response.data.paymentUrl;
+        const paymentUrl = response.data.order_url;
         if (!paymentUrl) {
           throw new Error('Không nhận được URL thanh toán từ VNPay.');
         }
-        console.log('VNPay payment URL:', paymentUrl);
-        navigation.navigate('VNPayWeb', {
-          paymentUrl,
-          onSuccess: () => {
-            // createRentalAPI(totalPrice);
-            console.log('Thanh toán VNPay thành công');
-          },
-        });
+        navigation.navigate('VNPayWeb', { paymentUrl });
       } catch (error) {
         console.error('Lỗi khi tạo link VNPay:', error);
         Alert.alert('Lỗi', 'Không thể khởi tạo thanh toán VNPay.');
       }
     } else if (selectedPaymentMethod === 'Momo') {
       try {
-        // const rentalId = await createRentalAPI();
-        // console.log('Momo payment created:', rentalId);
-        // console.log('Số tiền thanh toán:', totalPrice);
         const rentalId = rental?.rentalId || orderId;
         navigation.navigate('MomoPayment', {
           orderId: rentalId,
@@ -135,50 +192,78 @@ export default function PaymentBookingScreen({ route }) {
         console.error('Lỗi khi xử lý MoMo:', error.response?.data || error.message);
         Alert.alert('Lỗi', 'Không thể khởi tạo thanh toán MoMo.');
       }
+    } else if (selectedPaymentMethod === 'ZaloPay') {
+      try {
+        const api = await getAuthApi();
+        const response = await api.post(endpoints['createZaloPayOrder'] || 'http://192.168.1.7:8080/api/zalopay/create-order', {
+          orderId: rental?.rentalId || orderId,
+          amount: totalPrice,
+          userId: renterId,
+        });
+        const { return_code, sub_return_code, order_url, app_trans_id } = response.data;
+        if (return_code !== 1 || sub_return_code !== 1 || !order_url) {
+          throw new Error('Không nhận được URL thanh toán từ ZaloPay: ' + (response.data.return_message || 'Lỗi không xác định'));
+        }
+        const sandboxUrl = order_url.replace('qcgateway.zalopay.vn', 'sbgateway.zalopay.vn');
+        setAppTransId(app_trans_id);
+        const supported = await Linking.canOpenURL(sandboxUrl);
+        if (supported) {
+          await Linking.openURL(sandboxUrl);
+        } else {
+          setPaymentUrl(sandboxUrl);
+          setUseWebView(true);
+        }
+      } catch (error) {
+        console.error('Lỗi khi tạo link ZaloPay:', error.response?.data || error.message);
+        Alert.alert('Lỗi', 'Không thể khởi tạo thanh toán ZaloPay: ' + (error.response?.data?.return_message || error.message));
+      }
     } else {
       Alert.alert('Lỗi', 'Vui lòng chọn phương thức thanh toán.');
     }
   };
 
-  const createRentalAPI = async () => {
-    const totalPrice = (rental?.rentalContract?.bike?.pricePerDay || 0) * getDays(startDate, endDate) + (rental?.rentalContract?.serviceFee || 0);
-
-    try {
-      const api = await getAuthApi();
-      const res = await api.post(endpoints['createRental'], {
-        rentalId: rental?.rentalId || null,
-        contractId: rental?.rentalContract?.contractId || null,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        totalPrice: totalPrice,
-        renterId: renterId,
-      });
-
-      const returnedRentalId = res.data?.rentalId;
-      if (returnedRentalId) {
-        setOrderId(returnedRentalId);
-        Alert.alert('Thành công', `Bạn đã đặt xe thành công!\nMã đơn: ${returnedRentalId}`);
-        return returnedRentalId;
-      } else {
-        throw new Error('Không nhận được rentalId từ server.');
-      }
-    } catch (err) {
-      console.error('Lỗi khi tạo đơn thuê:', err.response?.data || err.message);
-      Alert.alert('Lỗi', 'Không thể tạo đơn thuê.');
-      throw err;
-    }
-  };
+  if (useWebView && paymentUrl) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
+        <WebView
+          source={{ uri: paymentUrl }}
+          style={{ flex: 1 }}
+          onNavigationStateChange={(navState) => {
+            console.log('WebView URL:', navState.url);
+            if (navState.url.includes('success') || !navState.loading) {
+              setPaymentUrl(null);
+              setUseWebView(false);
+              if (appTransId) {
+                checkStatus(appTransId);
+              } else {
+                Alert.alert('Lỗi', 'Không tìm thấy app_trans_id để kiểm tra trạng thái.');
+              }
+            } else if (navState.url.includes('error') || navState.url.includes('fail')) {
+              setPaymentUrl(null);
+              setUseWebView(false);
+              Alert.alert('Thất bại', 'Thanh toán ZaloPay thất bại.');
+            }
+          }}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView error:', nativeEvent);
+            setPaymentUrl(null);
+            setUseWebView(false);
+            Alert.alert('Lỗi', 'Không thể tải trang thanh toán ZaloPay.');
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerText}>Thanh toán đơn hàng #{rental?.rentalId || 'N/A'}</Text>
         </View>
-
-        {/* Bike Info */}
         <View style={styles.card}>
           <Image
             source={{ uri: rental?.rentalContract?.bike?.imageUrl?.[0] || 'https://example.com/placeholder.jpg' }}
@@ -199,8 +284,6 @@ export default function PaymentBookingScreen({ route }) {
             </Text>
           </View>
         </View>
-
-        {/* Status Info */}
         {rentalStatus !== 'confirmed' && (
           <View style={styles.statusSection}>
             <Text style={styles.statusText}>
@@ -208,8 +291,6 @@ export default function PaymentBookingScreen({ route }) {
             </Text>
           </View>
         )}
-
-        {/* Date Selection, Price Details, Payment Method */}
         {rentalStatus === 'confirmed' && (
           <>
             <View style={styles.section}>
@@ -227,7 +308,6 @@ export default function PaymentBookingScreen({ route }) {
                 </Text>
               </TouchableOpacity>
             </View>
-
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Chi tiết giá</Text>
               <View style={styles.priceRow}>
@@ -252,7 +332,6 @@ export default function PaymentBookingScreen({ route }) {
                 </Text>
               </View>
             </View>
-
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
               {paymentMethods.map((method, index) => (
@@ -284,13 +363,11 @@ export default function PaymentBookingScreen({ route }) {
                 </TouchableOpacity>
               ))}
             </View>
-
             <TouchableOpacity style={styles.confirmButton} onPress={createRental}>
               <Text style={styles.confirmButtonText}>Xác nhận và thanh toán</Text>
             </TouchableOpacity>
           </>
         )}
-
         <DatePicker
           modal
           mode="date"

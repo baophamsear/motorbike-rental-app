@@ -199,35 +199,21 @@ export default function MapScreen() {
     ({ item }) => (
       <TouchableOpacity
         style={styles.card}
-        onPress={() =>
-          navigation.navigate('BookingDetail', {
-            rental: { rentalId: item.id, rentalContract: { bike: item.bike } },
-          })
-        }
+        onPress={() => navigation.navigate("MotorbikeDetail", { contract: item })}
       >
         <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
         <View style={styles.cardInfo}>
           <Text style={styles.title}>{item.bike.name || 'N/A'}</Text>
           <Text style={styles.city} numberOfLines={1} ellipsizeMode="tail">
             {item.location?.address || 'Không rõ vị trí'}
-          </Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.info}>
-              <Ionicons name="star" size={14} color="#FFCA28" /> {item.rating} ({item.reviews})
-            </Text>
-            <Text style={styles.info}>🚴 Xe máy</Text>
-          </View>
+          </Text>          
           <Text style={styles.price}>
             {formatCurrency(item.pricePerDay)} <Text style={styles.perDay}>/ ngày</Text>
           </Text>
         </View>
         <TouchableOpacity
           style={styles.bookButton}
-          onPress={() =>
-            navigation.navigate('BookingDetail', {
-              rental: { rentalId: item.id, rentalContract: { bike: item.bike } },
-            })
-          }
+          onPress={() => navigation.navigate("MotorbikeDetail", { contract: item })}
         >
           <Text style={styles.bookButtonText}>Đặt ngay</Text>
         </TouchableOpacity>
@@ -241,11 +227,19 @@ export default function MapScreen() {
       <TouchableOpacity
         style={styles.suggestionItem}
         onPress={() => handleSelectSuggestion(item)}
+        activeOpacity={0.7}
       >
-        <Ionicons name="location-outline" size={20} color="#4CAF50" style={styles.suggestionIcon} />
-        <Text style={styles.suggestionText} numberOfLines={1} ellipsizeMode="tail">
-          {item.place_name}
-        </Text>
+        <View style={styles.suggestionIconContainer}>
+          <Ionicons name="location-outline" size={24} color="#4CAF50" />
+        </View>
+        <View style={styles.suggestionContent}>
+          <Text style={styles.suggestionTitle} numberOfLines={1} ellipsizeMode="tail">
+            {item.place_name.split(',')[0]}
+          </Text>
+          <Text style={styles.suggestionSubtitle} numberOfLines={1} ellipsizeMode="tail">
+            {item.place_name}
+          </Text>
+        </View>
       </TouchableOpacity>
     ),
     [handleSelectSuggestion]
@@ -262,8 +256,8 @@ export default function MapScreen() {
 
   const getSuggestionLayout = useCallback(
     (data, index) => ({
-      length: 48,
-      offset: 48 * index,
+      length: 64, // Increased to accommodate new design
+      offset: 64 * index,
       index,
     }),
     []
@@ -366,8 +360,16 @@ export default function MapScreen() {
               </View>
             ) : memoizedProperties.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="bicycle-outline" size={48} color="#6B7280" />
-                <Text style={styles.emptyText}>Không tìm thấy xe nào gần đây</Text>
+                <Ionicons name="bicycle-outline" size={64} color="#6B7280" />
+                <Text style={styles.emptyTitle}>Không có xe nào gần bạn</Text>
+                <Text style={styles.emptySubtitle}>Hãy thử tìm kiếm ở một khu vực khác hoặc làm mới.</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => fetchNearbyContracts(selectedLocation[1], selectedLocation[0])}
+                >
+                  <Ionicons name="refresh" size={20} color="#fff" />
+                  <Text style={styles.retryButtonText}>Thử lại</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -450,18 +452,37 @@ const styles = StyleSheet.create({
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginVertical: 4,
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  suggestionIcon: {
-    marginRight: 12,
+  suggestionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  suggestionText: {
+  suggestionContent: {
     flex: 1,
-    fontSize: 14,
+    marginLeft: 12,
+  },
+  suggestionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1F2A44',
+  },
+  suggestionSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   mapContainer: {
     height: screenHeight * 0.45,
@@ -635,6 +656,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+    fontWeight: '500',
     color: '#1F2A44',
     marginTop: 16,
   },
@@ -642,10 +664,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 40,
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2A44',
     marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8,
   },
 });

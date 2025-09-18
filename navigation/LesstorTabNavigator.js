@@ -16,6 +16,18 @@ import RentalDetailScreen from '../screens/lessor/RentalDetailScreen';
 import MessageScreen from "../screens/lessor/NotificationsScreen";
 import MotorDetailScreen from '../screens/lessor/MotorDetailScreen';
 import ContractDetailScreen from '../screens/lessor/ContractDetailScreen';
+import UserProfileScreen from '../screens/lessor/UserProfileScreen';
+
+// // Stack cho Profile
+// const ProfileStack = createNativeStackNavigator();
+
+// function ProfileStackNavigator() {
+//   return (
+//     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+//       <ProfileStack.Screen name="UserProfile" component={UserProfileScreen} />
+//     </ProfileStack.Navigator>
+//   );
+// }
 
 // Stack cho Dashboard
 const DashboardStack = createNativeStackNavigator();

@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react"; // Added useCallback
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   Image,
   SafeAreaView,
   StatusBar,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -18,124 +18,150 @@ import { endpoints } from "../../configs/APIs";
 export default function MotorRentBoardScreen() {
   const [contracts, setContracts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRenting, setIsRenting] = useState(true); // Trạng thái toggle
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(0); // Added page state for pagination
+  const [hasMore, setHasMore] = useState(true); // Track if more data is available
+  const [isFetchingMore, setIsFetchingMore] = useState(false); // Track loading more data
+  const pageSize = 5; // Match backend default size
 
   const navigation = useNavigation();
 
-  const fetchContracts = async () => {
-    setIsLoading(true);
+  const fetchContracts = useCallback(async (pageNum, reset = false) => {
+    if (!hasMore && !reset) return; // Stop if no more data unless resetting
+    if (pageNum !== 0) setIsFetchingMore(true); // Set loading state for additional pages
+    else setIsLoading(true); // Set loading state for initial fetch or refresh
+
     try {
       const api = await getAuthApi();
-      const response = await api.get(endpoints["activeContracts"]);
-      console.log('API response:', JSON.stringify(response.data, null, 2)); // Debug: Log dữ liệu API
-      // Lọc contracts chỉ lấy xe có trạng thái available
-      const availableContracts = response.data.filter(
+      // Updated API call to include page and size
+      const response = await api.get(`${endpoints["activeContracts"]}?page=${pageNum}&size=${pageSize}`);
+      const availableContracts = response.data.content.filter(
         (contract) => contract.bike?.status === 'available'
       );
-      console.log('Filtered available contracts:', availableContracts); // Debug: Log contracts đã lọc
-      setContracts(availableContracts);
+
+      // Update contracts: reset for refresh or initial load, append for pagination
+      setContracts((prev) => (reset ? availableContracts : [...prev, ...availableContracts]));
+      // Check if there are more pages to load
+      setHasMore(response.data.content.length === pageSize);
     } catch (error) {
       console.error("Error fetching contracts:", error);
     } finally {
       setIsLoading(false);
+      setIsFetchingMore(false);
     }
-  };
+  }, [hasMore]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchContracts(); // gọi lại API
+    setPage(0); // Reset to first page
+    setHasMore(true); // Reset hasMore
+    await fetchContracts(0, true); // Fetch with reset
     setRefreshing(false);
-  };
+  }, [fetchContracts]);
 
+  const loadMoreContracts = useCallback(() => {
+    if (!isFetchingMore && hasMore) {
+      setPage((prev) => prev + 1); // Increment page
+    }
+  }, [isFetchingMore, hasMore]);
 
   useEffect(() => {
-    fetchContracts();
-  }, []);
+    fetchContracts(page); // Fetch data when page changes
+  }, [page, fetchContracts]);
+
+  const renderContractCard = ({ item }) => (
+    <ContractCard contract={item} navigation={navigation} />
+  );
+
+  // Footer component to show loading spinner when fetching more
+  const renderFooter = () => {
+    if (!isFetchingMore) return null;
+    return (
+      <View style={styles.footerLoading}>
+        <ActivityIndicator size="small" color="#10B981" />
+      </View>
+    );
+  };
+
+  if (isLoading && contracts.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.loadingContainer}>
+          <Ionicons name="bicycle" size={50} color="#10B981" />
+          <Text style={styles.loadingText}>Đang tải danh sách xe...</Text>
+          <ActivityIndicator size="small" color="#10B981" style={styles.loadingSpinner} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
-      <ScrollView contentContainerStyle={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }>
-        {/* Welcome Title */}
-        <Text style={styles.welcomeTitle}>Chào mừng đến với Rentaxo</Text>
-
-        {/* Location Selector */}
-        <TouchableOpacity
-          style={styles.locationSelector}
-          onPress={() => navigation.navigate("Map")}
-        >
-          <Ionicons name="location-sharp" size={20} color="#4CAF50" />
-          <Text style={styles.locationText}>Tp. Hồ Chí Minh</Text>
-          <Ionicons name="chevron-down" size={20} color="#1F2A44" style={styles.locationChevron} />
-        </TouchableOpacity>
-
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <View style={styles.headerContainer}>
+        <Text style={styles.welcomeTitle}>Khám phá Rentaxo</Text>
+        <Text style={styles.welcomeSubtitle}>Thuê xe máy dễ dàng, nhanh chóng</Text>
+      </View>
+      <View style={styles.container}>
         {/* Search Bar */}
         <TouchableOpacity
           style={styles.searchBox}
           onPress={() => navigation.navigate("SearchMotor")}
         >
-          <Ionicons name="search" size={20} color="#6B7280" />
+          <Ionicons name="search" size={22} color="#6B7280" />
           <Text style={styles.searchText}>Tìm kiếm địa điểm, thành phố</Text>
-          <Ionicons name="options-outline" size={20} color="#4CAF50" />
+          <Ionicons name="options-outline" size={22} color="#10B981" />
         </TouchableOpacity>
-
-        {/* Toggle */}
-        <View style={styles.toggleWrapper}>
-          <TouchableOpacity
-            style={[styles.toggleButton, isRenting && styles.toggleButtonActive]}
-            onPress={() => setIsRenting(true)}
-          >
-            <Text style={[styles.toggleText, isRenting && styles.toggleTextActive]}>
-              Tôi muốn thuê
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, !isRenting && styles.toggleButtonActive]}
-            onPress={() => setIsRenting(false)}
-          >
-            <Text style={[styles.toggleText, !isRenting && styles.toggleTextActive]}>
-              Tôi muốn cho thuê
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Available Motorbikes */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Xe máy có sẵn</Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionAction}>Xem tất cả</Text>
+          <TouchableOpacity onPress={onRefresh}>
+            <Ionicons name="refresh" size={20} color="#10B981" />
           </TouchableOpacity>
         </View>
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Ionicons name="bicycle" size={48} color="#4CAF50" />
-            <Text style={styles.loadingText}>Đang tải danh sách xe...</Text>
-          </View>
-        ) : contracts.length === 0 ? (
+        {contracts.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Không có xe nào khả dụng</Text>
+            <Ionicons name="bicycle" size={80} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Không có xe nào khả dụng</Text>
+            <Text style={styles.emptySubtitle}>Hãy thử làm mới danh sách</Text>
+            <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+              <Ionicons name="refresh" size={20} color="#10B981" />
+              <Text style={styles.refreshButtonText}>Làm mới</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollHorizontal}>
-            {contracts.map((contract) => (
-              <ContractCard
-                key={contract.contractId}
-                contract={contract}
-                navigation={navigation}
+          <FlatList
+            data={contracts}
+            renderItem={renderContractCard}
+            keyExtractor={(item) => item.contractId.toString()}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#10B981"]}
+                tintColor="#10B981"
               />
-            ))}
-          </ScrollView>
+            }
+            onEndReached={loadMoreContracts} // Trigger loading more when reaching the end
+            onEndReachedThreshold={0.5} // Trigger when 50% of the last item is visible
+            ListFooterComponent={renderFooter} // Show loading spinner at the bottom
+            contentContainerStyle={styles.contractList}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Không có xe nào khả dụng</Text>
+              </View>
+            }
+          />
         )}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
+// ContractCard and formatCurrency remain unchanged
 function ContractCard({ contract, navigation }) {
   const bike = contract.bike || {};
 
@@ -152,21 +178,25 @@ function ContractCard({ contract, navigation }) {
         <Text style={styles.cardTitle}>
           {`${bike.brand?.name || "Unknown"} - ${bike.name || "N/A"}`}
         </Text>
-        <View style={styles.cardRatingRow}>
-          <Ionicons name="star" size={14} color="#FFCA28" />
-          <Text style={styles.cardRatingText}>{bike.rating || 4.5} ({bike.reviews || 30})</Text>
+        <View style={styles.cardInfoRow}>
+          <View style={styles.cardRatingRow}>
+            <Ionicons name="star" size={16} color="#F59E0B" />
+            <Text style={styles.cardRatingText}>{bike.rating || 4.5} ({bike.reviews || 30})</Text>
+          </View>
+          <Text style={styles.cardLocation}>Địa điểm: {bike.location?.name || "N/A"}</Text>
         </View>
-        <Text style={styles.cardLocation}>Địa điểm: {bike.location?.name || "N/A"}</Text>
-        <Text style={styles.cardPrice}>
-          {formatCurrency(bike.pricePerDay)} <Text style={styles.cardPriceSuffix}>/ ngày</Text>
-        </Text>
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardPrice}>
+            {formatCurrency(bike.pricePerDay)} <Text style={styles.cardPriceSuffix}>/ ngày</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.bookButton}
+            onPress={() => navigation.navigate("MotorbikeDetail", { contract })}
+          >
+            <Text style={styles.bookButtonText}>Đặt ngay</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <TouchableOpacity
-        style={styles.bookButton}
-        onPress={() => navigation.navigate("MotorbikeDetail", { contract })}
-      >
-        <Text style={styles.bookButtonText}>Đặt ngay</Text>
-      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -179,52 +209,57 @@ const formatCurrency = (value) => {
 const styles = {
   safeArea: {
     flex: 1,
-    backgroundColor: "#F9F9FB",
+    backgroundColor: "#FFFFFF",
   },
-  container: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+  headerContainer: {
+    padding: 20,
+    backgroundColor: "#F8FAFC",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
   welcomeTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: "700",
     color: "#1F2A44",
-    marginTop: 12,
-    marginBottom: 16,
     textAlign: "center",
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    color: "#6B7280",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   locationSelector: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   locationText: {
     flex: 1,
     fontSize: 16,
     color: "#1F2A44",
     marginLeft: 8,
-  },
-  locationChevron: {
-    marginLeft: 8,
+    fontWeight: "500",
   },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   searchText: {
     flex: 1,
@@ -232,79 +267,55 @@ const styles = {
     color: "#6B7280",
     marginHorizontal: 8,
   },
-  toggleWrapper: {
-    flexDirection: "row",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 4,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  toggleButtonActive: {
-    backgroundColor: "#4CAF50",
-  },
-  toggleText: {
-    fontSize: 16,
-    color: "#6B7280",
-    fontWeight: "600",
-  },
-  toggleTextActive: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#1F2A44",
   },
   sectionAction: {
     fontSize: 16,
-    color: "#4CAF50",
+    color: "#10B981",
+    fontWeight: "600",
   },
-  scrollHorizontal: {
-    paddingVertical: 8,
+  contractList: {
+    paddingBottom: 20,
   },
   card: {
-    width: 280,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginRight: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     overflow: "hidden",
   },
   cardImage: {
     width: "100%",
-    height: 140,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    height: 200,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   cardContent: {
-    padding: 12,
+    padding: 16,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     color: "#1F2A44",
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  cardInfoRow: {
+    marginBottom: 12,
   },
   cardRatingRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   cardRatingText: {
     fontSize: 14,
@@ -314,47 +325,86 @@ const styles = {
   cardLocation: {
     fontSize: 14,
     color: "#6B7280",
-    marginBottom: 4,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   cardPrice: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#FF5722",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#EF4444",
   },
   cardPriceSuffix: {
     fontSize: 14,
-    fontWeight: "normal",
+    fontWeight: "400",
     color: "#6B7280",
   },
   bookButton: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#10B981",
     borderRadius: 8,
     paddingVertical: 10,
-    margin: 12,
-    alignItems: "center",
+    paddingHorizontal: 16,
   },
   bookButtonText: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   loadingContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
+    paddingVertical: 40,
   },
   loadingText: {
     fontSize: 16,
     color: "#1F2A44",
-    marginTop: 8,
+    marginTop: 12,
+  },
+  loadingSpinner: {
+    marginTop: 12,
   },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2A44",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 24,
   },
   emptyText: {
     fontSize: 16,
     color: "#6B7280",
+  },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#10B981",
+  },
+  refreshButtonText: {
+    fontSize: 16,
+    color: "#10B981",
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  footerLoading: {
+    paddingVertical: 20,
+    alignItems: "center",
   },
 };

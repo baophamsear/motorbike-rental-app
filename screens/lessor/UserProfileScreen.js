@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,18 +12,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-// import { getAuthApi } from '../../utils/useAuthApi';
-// import { endpoints } from '../../configs/APIs';
-import LinearGradient from 'react-native-linear-gradient'; // Correct import
-import { endpoints } from '../configs/APIs';
-import { getAuthApi } from '../utils/useAuthApi';
-import { MyDispatchContext } from '../contexts/MyUserContext';
+import { getAuthApi } from '../../utils/useAuthApi';
+import { endpoints } from '../../configs/APIs';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const dispatch = useContext(MyDispatchContext);
   const navigation = useNavigation();
 
   const fetchUserProfile = useCallback(async () => {
@@ -55,28 +50,37 @@ export default function ProfileScreen() {
           text: 'Đăng xuất',
           style: 'destructive',
           onPress: async () => {
-            dispatch({
-              type: 'logout',
-            });
+            try {
+              // Assuming getAuthApi provides a logout method or token clearance
+              const api = await getAuthApi();
+              // Clear auth token (adjust based on your auth setup)
+              // Example: await api.logout() or clear local storage
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'LoginScreen' }], // Assumes LoginScreen exists
+              });
+            } catch (err) {
+              console.error('Error during logout:', err);
+              Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
+            }
           },
         },
       ]
     );
   }, [navigation]);
 
-  const displayRole = (role) => {
+  const capitalizeRole = (role) => {
     if (!role) return 'N/A';
-    return role.toLowerCase() === 'renter' ? 'Khách thuê' : role.toLowerCase() === 'lessor' ? 'Chủ xe' : role;
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
   };
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="#4CAF50" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
         <View style={styles.loadingContainer}>
-          <Ionicons name="person-circle-outline" size={80} color="#4CAF50" />
+          <ActivityIndicator size="large" color="#4CAF50" />
           <Text style={styles.loadingText}>Đang tải hồ sơ...</Text>
-          <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingSpinner} />
         </View>
       </SafeAreaView>
     );
@@ -85,11 +89,11 @@ export default function ProfileScreen() {
   if (error) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="#4CAF50" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={80} color="#EF4444" />
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchUserProfile} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchUserProfile}>
             <Ionicons name="refresh" size={20} color="#fff" />
             <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
@@ -100,25 +104,13 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#4CAF50" />
-      {typeof LinearGradient === 'undefined' ? (
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-        </View>
-      ) : (
-        <LinearGradient
-          colors={['#4CAF50', '#66BB6A']}
-          style={styles.header}
-        >
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-        </LinearGradient>
-      )}
+      <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#1F2A44" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
+      </View>
       <View style={styles.container}>
         <View style={styles.profileCard}>
           <Image
@@ -128,28 +120,25 @@ export default function ProfileScreen() {
             style={styles.avatar}
           />
           <Text style={styles.fullName}>{user?.fullName || 'N/A'}</Text>
-          <Text style={styles.roleText}>{displayRole(user?.role)}</Text>
           <View style={styles.infoContainer}>
             <View style={styles.infoRow}>
               <Ionicons name="mail-outline" size={20} color="#4CAF50" />
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>Email:</Text>
               <Text style={styles.infoValue}>{user?.email || 'N/A'}</Text>
             </View>
-            <View style={styles.divider} />
             <View style={styles.infoRow}>
               <Ionicons name="call-outline" size={20} color="#4CAF50" />
-              <Text style={styles.infoLabel}>Số điện thoại</Text>
+              <Text style={styles.infoLabel}>Số điện thoại:</Text>
               <Text style={styles.infoValue}>{user?.phone || 'Chưa cập nhật'}</Text>
             </View>
-            <View style={styles.divider} />
             <View style={styles.infoRow}>
               <Ionicons name="person-outline" size={20} color="#4CAF50" />
-              <Text style={styles.infoLabel}>Vai trò</Text>
-              <Text style={styles.infoValue}>{displayRole(user?.role)}</Text>
+              <Text style={styles.infoLabel}>Vai trò:</Text>
+              <Text style={styles.infoValue}>{capitalizeRole(user?.role)}</Text>
             </View>
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#fff" />
           <Text style={styles.logoutButtonText}>Đăng xuất</Text>
         </TouchableOpacity>
@@ -167,82 +156,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    paddingTop: 40,
-    paddingBottom: 20,
-    backgroundColor: '#4CAF50', // Fallback background
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: '#1F2A44',
     marginLeft: 16,
   },
   container: {
     flex: 1,
     padding: 16,
-    alignItems: 'center',
   },
   profileCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
-    marginBottom: 32,
-    width: '100%',
-    maxWidth: 400,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 24,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     marginBottom: 16,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#4CAF50',
   },
   fullName: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#1F2A44',
-    marginBottom: 8,
-  },
-  roleText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#4CAF50',
     marginBottom: 16,
   },
   infoContainer: {
     width: '100%',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
+    marginBottom: 12,
   },
   infoLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#6B7280',
-    marginLeft: 12,
-    width: 120,
+    marginLeft: 8,
+    width: 100,
   },
   infoValue: {
     fontSize: 16,
-    fontWeight: '500',
     color: '#1F2A44',
     flex: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 8,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -250,14 +221,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#EF4444',
     borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-    width: '80%',
-    maxWidth: 300,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoutButtonText: {
     fontSize: 16,
@@ -271,14 +240,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     color: '#1F2A44',
     marginTop: 16,
-    marginBottom: 8,
-  },
-  loadingSpinner: {
-    marginTop: 8,
   },
   errorContainer: {
     flex: 1,
@@ -287,7 +252,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     color: '#EF4444',
     textAlign: 'center',
@@ -298,12 +263,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#4CAF50',
     borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 3,
   },
   retryButtonText: {
     fontSize: 16,
