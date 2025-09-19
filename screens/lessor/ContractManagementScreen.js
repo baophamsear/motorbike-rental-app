@@ -54,6 +54,8 @@ export default function ContractManagement() {
         return { backgroundColor: '#10B981', color: '#FFFFFF' };
       case 'rejected':
         return { backgroundColor: '#EF4444', color: '#FFFFFF' };
+      case 'active':
+        return { backgroundColor: '#3B82F6', color: '#FFFFFF' };
       default:
         return { backgroundColor: '#6B7280', color: '#FFFFFF' };
     }
@@ -67,21 +69,30 @@ export default function ContractManagement() {
         return 'Đã duyệt';
       case 'rejected':
         return 'Bị từ chối';
+      case 'active':
+        return 'Đang hoạt động';
       default:
         return 'Không rõ';
     }
+  };
+
+  const transDate = (dateStr) => {
+    if (!dateStr) return 'Không rõ';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('vi-VN');
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  // Hiển thị thông tin hợp đồng
   const renderItem = ({ item }) => {
     const { contractId, lessor, bike, serviceFee, startDate, endDate, status } = item;
 
     return (
       <View style={styles.card}>
-        {/* Header */}
+        {/* Tiêu đề và trạng thái */}
         <View style={styles.cardHeader}>
           <View style={styles.headerLeft}>
             <Ionicons name="contract-outline" size={24} color="#10B981" />
@@ -94,21 +105,21 @@ export default function ContractManagement() {
           </View>
         </View>
 
-        {/* Tags */}
+        {/* Thẻ tên hãng */}
         <View style={styles.tagContainer}>
           <View style={[styles.tag, { backgroundColor: '#10B981' }]}>
             <Text style={styles.tagText}>{bike?.brand?.name || 'Không rõ'}</Text>
           </View>
         </View>
 
-        {/* Amount */}
+        {/* Giá chiết khấu */}
         <Text style={styles.amount}>
           Giá chiết khấu: <Text style={styles.amountBold}>{serviceFee?.toLocaleString('vi-VN')} VND</Text>
         </Text>
 
         <View style={styles.divider} />
 
-        {/* Info rows */}
+        {/* Thông tin hợp đồng */}
         <View style={styles.infoRow}>
           <Ionicons name="person-circle-outline" size={20} color="#10B981" />
           <Text style={styles.infoText}>Chủ xe: {bike?.owner?.fullName || 'Không rõ'}</Text>
@@ -116,7 +127,7 @@ export default function ContractManagement() {
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={20} color="#10B981" />
           <Text style={styles.infoText}>
-            {startDate} - {endDate}
+            {transDate(startDate)} - {transDate(endDate)}
           </Text>
         </View>
         <View style={styles.infoRow}>
@@ -124,7 +135,7 @@ export default function ContractManagement() {
           <Text style={styles.infoText}>{bike?.location?.name || 'Không rõ'}</Text>
         </View>
 
-        {/* Notice for pending */}
+        {/* Thông báo cập nhật hợp đồng*/}
         {status?.toLowerCase() === 'pending' && (
           <View style={styles.noticeBox}>
             <Ionicons name="alert-circle-outline" size={20} color="#FFD700" />

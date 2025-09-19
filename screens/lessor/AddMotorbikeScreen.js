@@ -16,7 +16,7 @@ import {
   PermissionsAndroid,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import APIs, { endpoints } from '../../configs/APIs';
 import { getAuthApi } from '../../utils/useAuthApi';
@@ -215,7 +215,7 @@ export default function AddMotorbike() {
         }
       }}
     >
-      <Ionicons name="checkmark-circle-outline" size={20} color="#4CAF50" style={styles.modalIcon} />
+      <Icon name="checkmark-circle-outline" size={20} color="#4CAF50" style={styles.modalIcon} />
       <Text style={styles.modalItemText}>{item.name}</Text>
     </TouchableOpacity>
   );
@@ -236,7 +236,7 @@ export default function AddMotorbike() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={28} color="#1F2A44" />
+          <Icon name="arrow-back" size={28} color="#1F2A44" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thêm xe mới</Text>
         <View style={styles.headerSpacer} />
@@ -263,7 +263,7 @@ export default function AddMotorbike() {
               <Text style={[styles.dropdownText, selectedBrand ? styles.dropdownTextSelected : null]}>
                 {selectedBrand?.name || 'Chọn hãng xe'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              <Icon name="chevron-down" size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
           <View style={styles.inputHalf}>
@@ -272,7 +272,7 @@ export default function AddMotorbike() {
               <Text style={[styles.dropdownText, selectedLocation ? styles.dropdownTextSelected : null]}>
                 {selectedLocation?.name || 'Chọn địa điểm'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              <Icon name="chevron-down" size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
         </View>
@@ -332,18 +332,18 @@ export default function AddMotorbike() {
                   style={styles.deleteIcon}
                   onPress={() => setBikeImages(bikeImages.filter((_, i) => i !== index))}
                 >
-                  <Ionicons name="close-circle" size={24} color="#FF5722" />
+                  <Icon name="close-circle" size={24} color="#FF5722" />
                 </TouchableOpacity>
               </View>
             ))
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="image-outline" size={40} color="#6B7280" />
+              <Icon name="image-outline" size={40} color="#6B7280" />
               <Text style={styles.placeholderText}>Chưa có ảnh xe</Text>
             </View>
           )}
           <TouchableOpacity style={styles.uploadButton} onPress={pickBikeImages} activeOpacity={0.7}>
-            <Ionicons name="cloud-upload-outline" size={24} color="#4CAF50" />
+            <Icon name="cloud-upload-outline" size={24} color="#4CAF50" />
             <Text style={styles.uploadButtonText}>Tải lên ảnh xe</Text>
           </TouchableOpacity>
         </View>
@@ -359,18 +359,18 @@ export default function AddMotorbike() {
                   style={styles.deleteIcon}
                   onPress={() => setDocumentImages(documentImages.filter((_, i) => i !== index))}
                 >
-                  <Ionicons name="close-circle" size={24} color="#FF5722" />
+                  <Icon name="close-circle" size={24} color="#FF5722" />
                 </TouchableOpacity>
               </View>
             ))
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="document-outline" size={40} color="#6B7280" />
+              <Icon name="document-outline" size={40} color="#6B7280" />
               <Text style={styles.placeholderText}>Chưa có giấy tờ</Text>
             </View>
           )}
           <TouchableOpacity style={styles.uploadButton} onPress={pickDocumentImages} activeOpacity={0.7}>
-            <Ionicons name="cloud-upload-outline" size={24} color="#4CAF50" />
+            <Icon name="cloud-upload-outline" size={24} color="#4CAF50" />
             <Text style={styles.uploadButtonText}>Tải lên giấy tờ</Text>
           </TouchableOpacity>
         </View>

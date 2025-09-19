@@ -54,7 +54,7 @@ export default function EditContractScreen() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [searchError, setSearchError] = useState('');
 
-  // Validate and update camera when selectedLocation changes
+  // Cập nhật camera khi tọa độ thay đổi
   useEffect(() => {
     if (isFiniteNumber(selectedLocation[0]) && isFiniteNumber(selectedLocation[1])) {
       cameraRef.current?.setCamera({
@@ -74,6 +74,7 @@ export default function EditContractScreen() {
     return isNaN(d.getTime()) ? 'Chọn ngày' : d.toLocaleDateString('vi-VN');
   }, []);
 
+  // Hàm lấy gợi ý địa điểm từ Mapbox và Autocompleted
   const fetchSuggestions = useCallback(async (query) => {
     if (!query) {
       setSuggestions([]);
@@ -96,6 +97,7 @@ export default function EditContractScreen() {
     }
   }, []);
 
+  // Cập nhật vị trí khi chọn gợi ý
   const handleSelectSuggestion = useCallback((item) => {
     const [lng, lat] = item.center;
     if (isFiniteNumber(lng) && isFiniteNumber(lat)) {
@@ -149,6 +151,7 @@ export default function EditContractScreen() {
     setSelectedLocation(DEFAULT_COORDINATES);
   };
 
+  // Xử lý khi nhấn vào bản đồ để chọn vị trí
   const handleMapPress = useCallback(async (event) => {
     const { geometry } = event;
     const [lng, lat] = geometry.coordinates;

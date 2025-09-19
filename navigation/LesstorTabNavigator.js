@@ -4,13 +4,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 
-import MyMotorBoard from "../screens/lessor/MyMotorBoard";
+import MyMotorBoard from "../screens/lessor/MyMotorBoardScreen";
 import UserProfile from "../screens/UserProfile";
-import MotorManagement from '../screens/lessor/MotorManagement';
+import MotorManagement from '../screens/lessor/MotorManagementScreen';
 
 import AddButton from '../screens/shared/AddButton'; // custom button giữa
-import AddMotorbike from '../screens/lessor/AddMotorbike';
-import ContractManagement from '../screens/lessor/ContractManagement';
+import AddMotorbike from '../screens/lessor/AddMotorbikeScreen';
+import ContractManagement from '../screens/lessor/ContractManagementScreen';
 import ContractEditScreen from '../screens/lessor/ContractEditScreen';
 import RentalDetailScreen from '../screens/lessor/RentalDetailScreen';
 import MessageScreen from "../screens/lessor/NotificationsScreen";

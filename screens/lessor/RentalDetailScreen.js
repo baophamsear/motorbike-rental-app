@@ -30,7 +30,6 @@ export default function RentalDetailScreen() {
   const route = useRoute();
   const { rentalId } = route.params;
 
-  const api = getAuthApi();
 
 
   const fetchRentalDetail = useCallback(async () => {
@@ -81,37 +80,32 @@ export default function RentalDetailScreen() {
       if (normalizedRental.status === 'pending' && normalizedRental.createdAt) {
         const createdAt = new Date(normalizedRental.createdAt);
         if (!isNaN(createdAt.getTime())) {
+          // Nếu quá 24 giờ kể từ khi tạo mà chưa xác nhận, tự động hủy
           const confirmationDeadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
           if (now > confirmationDeadline) {
             await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
             normalizedRental.status = 'cancelled';
-            normalizedRental.cancelledBy = 'system';
-            console.log('Rental auto-cancelled due to expired confirmation deadline');
           }
         }
       }
 
       // Kiểm tra và tự động hủy nếu quá hạn thanh toán
-      if (normalizedRental.status === 'confirmed' && normalizedRental.paymentStatus === 'pending' && now > paymentDeadline) {
+      if (normalizedRental.status === 'confirmed' && normalizedRental.paymentStatus !== 'paid' && now > paymentDeadline) {
         const paymentDeadline = new Date(normalizedRental.startDate);
         if (!isNaN(paymentDeadline.getTime()) && now > paymentDeadline) {
           await api.patch(`/rentals/${rentalId}/status`, { status: 'cancelled' });
           normalizedRental.status = 'cancelled';
-          normalizedRental.cancelledBy = 'system';
-          console.log('Rental auto-cancelled due to expired payment deadline');
         }
       }
 
       // Kiểm tra quá hạn hoặc không nhận xe
-      if (normalizedRental.status === 'confirmed' && now > endDate) {
+      if (normalizedRental.status === 'confirmed' && normalizedRental.paymentStatus === 'paid' && now > endDate) {
         await api.patch(`/rentals/${rentalId}/status`, { status: 'completed' });
         await updateBikeStatus(normalizedRental.rentalContract.bike.bikeId, 'available');
         normalizedRental.status = 'completed';
-        console.log('Rental auto-completed due to end date passed without pickup');
       } else if (normalizedRental.status === 'active' && now > endDate) {
         await api.patch(`/rentals/${rentalId}/status`, { status: 'completed' });
         normalizedRental.status = 'completed';
-        console.log('Rental marked as completed due to overdue');
       }
 
       setRental(normalizedRental);
@@ -138,6 +132,7 @@ export default function RentalDetailScreen() {
     }
   }, []);
 
+  // Tính toán trạng thái thời gian còn lại
   const calculateTimeStatus = useCallback(() => {
     if (!rental) return null;
 
@@ -177,8 +172,6 @@ export default function RentalDetailScreen() {
       label = 'Thông tin thanh toán';
       isOverdue = now > targetDate;
       paymentInfo = rental.paymentStatus === 'pending' ? 'Chưa thanh toán' : 'Đã thanh toán';
-    } else if (rental.status === 'violated') {
-      return { label: 'Đơn thuê vi phạm (quá hạn)', isOverdue: true };
     } else if (rental.status === 'completed') {
       return { label: 'Đơn thuê đã hoàn thành', isOverdue: false };
     } else if (rental.status === 'cancelled') {
@@ -187,6 +180,7 @@ export default function RentalDetailScreen() {
 
     if (!targetDate) return { label, paymentInfo, isOverdue };
 
+    // Tính toán khoảng thời gian dựa trên targetDate và isOverdue
     const diffMs = isOverdue ? now - targetDate : targetDate - now;
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -208,9 +202,14 @@ export default function RentalDetailScreen() {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // Tính toán trạng thái thời gian (còn hạn, sắp hết hạn, hay quá hạn)
+
+      // Cập nhật state để UI hiển thị theo trạng thái mới
       const status = calculateTimeStatus();
+    
       setTimeStatus(status);
       if (status && status.isOverdue && rental && rental.status !== 'cancelled' && rental.status !== 'completed') {
+        // Phòng trường hợp backend chưa kịp cập nhật trạng thái, ta fetch lại chi tiết
         fetchRentalDetail();
       }
     }, 60000);
@@ -324,74 +323,17 @@ export default function RentalDetailScreen() {
     }, 500);
   }, [rentalId]);
 
-  const handleScanQRCode = useCallback(async (data) => {
-    try {
-      const qrData = JSON.parse(data);
-      if (!qrData.rentalId || !qrData.type || !qrData.timestamp) {
-        throw new Error('Mã QR không hợp lệ');
-      }
 
-      const now = new Date('2025-09-12T15:11:00+07:00');
-      const qrTimestamp = new Date(qrData.timestamp);
-      const timeDiff = (now - qrTimestamp) / (1000 * 60); // Phút
-      if (timeDiff > 5) {
-        throw new Error('Mã QR đã hết hạn');
-      }
+  // const handleOpenScanner = useCallback(async () => {
+  //   const hasPermission = await requestCameraPermission();
+  //   if (hasPermission) {
+  //     setShowScanner(true);
+  //   } else {
+  //     Alert.alert('Lỗi', 'Không có quyền truy cập camera');
+  //   }
+  // }, []);
 
-      if (qrData.rentalId !== rentalId) {
-        throw new Error('Mã QR không khớp với đơn thuê');
-      }
-
-      const startDate = new Date(rental.startDate);
-      const endDate = new Date(rental.endDate);
-
-      const api = await getAuthApi();
-      if (qrData.type === 'pickup') {
-        if (rental.status !== 'confirmed' || rental.paymentStatus !== 'paid' || now < startDate || now > endDate) {
-          throw new Error('Đơn thuê không ở trạng thái hợp lệ để nhận xe');
-        }
-        await api.patch(`/rentals/${rentalId}/status`, { status: 'active' });
-        await updateBikeStatus(rental.rentalContract.bike.bikeId, 'rented');
-        Alert.alert('Thành công', 'Đã xác nhận nhận xe!');
-      } else if (qrData.type === 'return') {
-        if (rental.status !== 'active' || timeStatus?.isOverdue) {
-          throw new Error('Đơn thuê không ở trạng thái hợp lệ để trả xe');
-        }
-        await api.patch(`/rentals/${rentalId}/status`, { status: 'completed' });
-        await updateBikeStatus(rental.rentalContract.bike.bikeId, 'available');
-        Alert.alert('Thành công', 'Đã xác nhận trả xe!');
-      } else {
-        throw new Error('Loại mã QR không hợp lệ');
-      }
-
-      console.log(`QR Scan: rentalId=${qrData.rentalId}, type=${qrData.type}, timestamp=${qrData.timestamp}`);
-      setQrCode(null);
-      setShowScanner(false);
-      fetchRentalDetail();
-    } catch (err) {
-      console.error('Lỗi xử lý mã QR:', err);
-      Alert.alert('Lỗi', err.message || 'Không thể xử lý mã QR');
-      setShowScanner(false);
-    }
-  }, [rentalId, rental, timeStatus, fetchRentalDetail]);
-
-  const handleOpenScanner = useCallback(async () => {
-    const hasPermission = await requestCameraPermission();
-    if (hasPermission) {
-      setShowScanner(true);
-    } else {
-      Alert.alert('Lỗi', 'Không có quyền truy cập camera');
-    }
-  }, []);
-
-  const onBarCodeRead = useCallback(
-    (event) => {
-      if (showScanner) {
-        handleScanQRCode(event.data);
-      }
-    },
-    [handleScanQRCode, showScanner]
-  );
+  
 
   if (isLoading) {
     return (
@@ -563,13 +505,7 @@ export default function RentalDetailScreen() {
                   <View style={styles.qrCodeWrapper}>
                     <QRCode value={qrCode} size={200} />
                   </View>
-                  <TouchableOpacity
-                    style={styles.qrActionButton}
-                    onPress={handleOpenScanner}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.qrActionButtonText}>Quét mã QR (Nhận xe)</Text>
-                  </TouchableOpacity>
+                  
                 </>
               ) : (
                 <TouchableOpacity
@@ -597,13 +533,7 @@ export default function RentalDetailScreen() {
                   <View style={styles.qrCodeWrapper}>
                     <QRCode value={qrCode} size={200} />
                   </View>
-                  <TouchableOpacity
-                    style={styles.qrActionButton}
-                    onPress={handleOpenScanner}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.qrActionButtonText}>Quét mã QR (Trả xe)</Text>
-                  </TouchableOpacity>
+                  
                 </>
               ) : (
                 <TouchableOpacity

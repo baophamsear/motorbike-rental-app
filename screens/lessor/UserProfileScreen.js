@@ -51,13 +51,10 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Assuming getAuthApi provides a logout method or token clearance
               const api = await getAuthApi();
-              // Clear auth token (adjust based on your auth setup)
-              // Example: await api.logout() or clear local storage
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'LoginScreen' }], // Assumes LoginScreen exists
+                routes: [{ name: 'LoginScreen' }], 
               });
             } catch (err) {
               console.error('Error during logout:', err);

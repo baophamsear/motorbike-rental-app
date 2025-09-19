@@ -28,7 +28,7 @@ const MyBookingsScreen = () => {
     const [rental, setRental] = useState([]);
     const [renterId, setRenterId] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
-    const [fadeAnim] = useState(new Animated.Value(0)); // Animation cho modal
+    const [fadeAnim] = useState(new Animated.Value(0)); 
 
     const confirmedRental = renterId ? topics.renter.confirmRental(renterId) : null;
     const canceledRental = renterId ? topics.renter.cancelRental(renterId) : null;

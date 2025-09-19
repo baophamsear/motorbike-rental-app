@@ -47,6 +47,8 @@ export default function MapScreen() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
+
+  // Yêu cầu quyền truy cập vị trí và lấy vị trí hiện tại
   const requestLocation = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -73,6 +75,7 @@ export default function MapScreen() {
     }
   }, []);
 
+  //  Lấy những hợp đồng xe gần vị trí đã cho
   const fetchNearbyContracts = useCallback(async (latitude, longitude) => {
     setIsLoading(true);
     try {
@@ -98,6 +101,7 @@ export default function MapScreen() {
     }
   }, []);
 
+  // Tìm kiếm gợi ý địa điểm từ Mapbox API
   const fetchSuggestions = useCallback(async (query) => {
     if (!query) {
       setSuggestions([]);
@@ -117,6 +121,7 @@ export default function MapScreen() {
     }
   }, []);
 
+  // Xử lý khi chọn một gợi ý
   const handleSelectSuggestion = useCallback((item) => {
     const [lng, lat] = item.center;
     setSelectedLocation([lng, lat]);
@@ -130,6 +135,7 @@ export default function MapScreen() {
     fetchNearbyContracts(lat, lng);
   }, [fetchNearbyContracts]);
 
+  // Tìm kiếm địa điểm và cập nhật bản đồ
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập địa điểm để tìm kiếm');
@@ -174,6 +180,7 @@ export default function MapScreen() {
 
   const formatCurrency = useCallback((val) => (val ? val.toLocaleString('vi-VN') : '0'), []);
 
+  // Đánh dấu vị trí xe trên bản đồ
   const renderMarker = useCallback(
     (item) => {
       const loc = item.location;

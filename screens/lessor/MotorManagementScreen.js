@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getAuthApi } from '../../utils/useAuthApi';
-import APIs, { endpoints } from '../../configs/APIs';
+import { endpoints } from '../../configs/APIs';
 
 export default function MotorManagement() {
   const [motors, setMotors] = useState([]);
@@ -22,6 +22,7 @@ export default function MotorManagement() {
   const [refreshAnim] = useState(new Animated.Value(0));
   const navigation = useNavigation();
 
+  // Tải danh sách các xe của chủ xe
   const fetchMotors = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -32,6 +33,7 @@ export default function MotorManagement() {
       }
       const response = await api.get(endpoints['myMotor']);
       setMotors(Array.isArray(response.data) ? response.data : []);
+      // Bắt đầu animation quay biểu tượng làm mới
       Animated.timing(refreshAnim, {
         toValue: 1,
         duration: 400,

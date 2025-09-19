@@ -56,7 +56,7 @@ const DashboardScreen = () => {
     }
   };
 
-  // Hàm lấy thống kê
+  // Hàm lấy thống kê lấy số lượng xe và số lượng hợp đồng
   const fetchStats = useCallback(async () => {
     try {
       const api = await getAuthApi();
@@ -83,7 +83,7 @@ const DashboardScreen = () => {
     fetchStats();
   }, []);
 
-  // WebSocket setup
+  // WebSocket setup để cập nhật khi có đơn thuê mới được gởi lên
   const topicCreateRental = lessorId ? topics.lessor.createRental(lessorId) : null;
   const { messages: messagesCreateRental } = useWebSocket(topicCreateRental);
 
@@ -191,24 +191,24 @@ const DashboardScreen = () => {
     setRefreshing(false);
   }, [filterStatus]);
 
-  // Format ngày tháng
-  const formatDate = useCallback((dateString) => {
-    if (!dateString) {
-      console.error('Date string is undefined or null');
-      return 'N/A';
-    }
-    const parsedDate = moment(dateString, [
-      'YYYY-MM-DD HH:mm:ss.SSSSSS',
-      'YYYY-MM-DD HH:mm:ss',
-      'YYYY-MM-DDTHH:mm:ss.SSSSSS',
-      moment.ISO_8601
-    ], true);
-    if (!parsedDate.isValid()) {
-      console.error('Invalid date format:', dateString);
-      return 'N/A';
-    }
-    return parsedDate.format('DD/MM/YYYY');
-  }, []);
+  // // Format ngày tháng
+  // const formatDate = useCallback((dateString) => {
+  //   if (!dateString) {
+  //     console.error('Date string is undefined or null');
+  //     return 'N/A';
+  //   }
+  //   const parsedDate = moment(dateString, [
+  //     'YYYY-MM-DD HH:mm:ss.SSSSSS',
+  //     'YYYY-MM-DD HH:mm:ss',
+  //     'YYYY-MM-DDTHH:mm:ss.SSSSSS',
+  //     moment.ISO_8601
+  //   ], true);
+  //   if (!parsedDate.isValid()) {
+  //     console.error('Invalid date format:', dateString);
+  //     return 'N/A';
+  //   }
+  //   return parsedDate.format('DD/MM/YYYY');
+  // }, []);
 
   // Format trạng thái
   const formatStatus = useCallback((status) => {
@@ -232,7 +232,7 @@ const DashboardScreen = () => {
     }
   }, []);
 
-  // Format tiền tệ
+  // Format đơn vị tiền tệ
   const formatCurrency = useCallback((value) => {
     return value ? value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : 'N/A';
   }, []);
@@ -320,7 +320,7 @@ const DashboardScreen = () => {
               <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
                 <Ionicons name="arrow-back" size={28} color="#1F2A44" />
               </TouchableOpacity>
-              <Text style={styles.title}>Dashboard</Text>
+              <Text style={styles.title}>Bảng điều khiển</Text>
               <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.notificationButton} activeOpacity={0.7}>
                   <Ionicons name="notifications-outline" size={28} color="#1F2A44" />
@@ -330,18 +330,12 @@ const DashboardScreen = () => {
                     </Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.avatarContainer} activeOpacity={0.7}>
-                  <Image
-                    source={{ uri: 'https://via.placeholder.com/40' }}
-                    style={styles.avatar}
-                  />
-                </TouchableOpacity>
               </View>
             </View>
 
-            <Text style={styles.welcome}>Xin chào, Bimal</Text>
+            <Text style={styles.welcome}>Xin chào!</Text>
 
-            {/* Quick Access Cards */}
+            {/* Quản lý xe và hợp đồng */}
             <View style={styles.infoRow}>
               <TouchableOpacity
                 style={styles.card}
@@ -377,7 +371,7 @@ const DashboardScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Stats */}
+            {/* Thống kê */}
             <View style={styles.statsRow}>
               <LinearGradient
                 colors={['#A7F3D0', '#34D399']}
@@ -387,7 +381,7 @@ const DashboardScreen = () => {
                   <FontAwesome5 name="money-bill-wave" size={36} color="#1F2A44" />
                 </View>
                 <Text style={styles.statTitle}>Doanh thu</Text>
-                <Text style={styles.statAmount}>25.001.000 VNĐ</Text>
+                <Text style={styles.statAmount}>430.400 VNĐ</Text>
                 <View style={styles.progressBar}>
                   <LinearGradient
                     colors={['#A7F3D0', '#34D399']}
@@ -404,7 +398,7 @@ const DashboardScreen = () => {
                   <Ionicons name="eye-outline" size={36} color="#1F2A44" />
                 </View>
                 <Text style={styles.statTitle}>Lượt xem</Text>
-                <Text style={styles.statAmount}>1.500.055</Text>
+                <Text style={styles.statAmount}>130</Text>
                 <View style={styles.progressBar}>
                   <LinearGradient
                     colors={['#67E8F9', '#06B6D4']}
@@ -415,7 +409,7 @@ const DashboardScreen = () => {
               </LinearGradient>
             </View>
 
-            {/* Filter Labels */}
+            {/* Nhãn Lọc theo trạng thái đơn thuê */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -538,15 +532,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
+    marginLeft: 65,
     color: '#1F2A44',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 20,
   },
   notificationButton: {
-    marginRight: 16,
+    marginRight: 16, 
     position: 'relative',
+    marginLeft: 35,
   },
   notificationBadge: {
     position: 'absolute',
@@ -654,7 +651,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statAmount: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2A44',
     marginBottom: 8,

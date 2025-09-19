@@ -19,29 +19,30 @@ export default function MotorRentBoardScreen() {
   const [contracts, setContracts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0); // Added page state for pagination
-  const [hasMore, setHasMore] = useState(true); // Track if more data is available
-  const [isFetchingMore, setIsFetchingMore] = useState(false); // Track loading more data
-  const pageSize = 5; // Match backend default size
+  const [page, setPage] = useState(0); 
+  const [hasMore, setHasMore] = useState(true); 
+  const [isFetchingMore, setIsFetchingMore] = useState(false); 
+  const pageSize = 5; 
 
   const navigation = useNavigation();
 
+  // Tải lên danh sách hợp đồng với phân trang
   const fetchContracts = useCallback(async (pageNum, reset = false) => {
-    if (!hasMore && !reset) return; // Stop if no more data unless resetting
-    if (pageNum !== 0) setIsFetchingMore(true); // Set loading state for additional pages
-    else setIsLoading(true); // Set loading state for initial fetch or refresh
+    if (!hasMore && !reset) return; 
+    if (pageNum !== 0) setIsFetchingMore(true);
+    else setIsLoading(true);
 
     try {
       const api = await getAuthApi();
-      // Updated API call to include page and size
+      
       const response = await api.get(`${endpoints["activeContracts"]}?page=${pageNum}&size=${pageSize}`);
       const availableContracts = response.data.content.filter(
         (contract) => contract.bike?.status === 'available'
       );
 
-      // Update contracts: reset for refresh or initial load, append for pagination
+      
       setContracts((prev) => (reset ? availableContracts : [...prev, ...availableContracts]));
-      // Check if there are more pages to load
+      
       setHasMore(response.data.content.length === pageSize);
     } catch (error) {
       console.error("Error fetching contracts:", error);
@@ -51,29 +52,31 @@ export default function MotorRentBoardScreen() {
     }
   }, [hasMore]);
 
+  // Làm mới danh sách hợp đồng
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setPage(0); // Reset to first page
-    setHasMore(true); // Reset hasMore
-    await fetchContracts(0, true); // Fetch with reset
+    setPage(0);
+    setHasMore(true);
+    await fetchContracts(0, true);
     setRefreshing(false);
   }, [fetchContracts]);
 
+  // Tải thêm hợp đồng khi cuộn đến cuối danh sách
   const loadMoreContracts = useCallback(() => {
     if (!isFetchingMore && hasMore) {
-      setPage((prev) => prev + 1); // Increment page
+      setPage((prev) => prev + 1); 
     }
   }, [isFetchingMore, hasMore]);
 
   useEffect(() => {
-    fetchContracts(page); // Fetch data when page changes
+    fetchContracts(page); 
   }, [page, fetchContracts]);
 
   const renderContractCard = ({ item }) => (
     <ContractCard contract={item} navigation={navigation} />
   );
 
-  // Footer component to show loading spinner when fetching more
+  // Hiển thị spinner khi đang tải thêm hợp đồng
   const renderFooter = () => {
     if (!isFetchingMore) return null;
     return (
@@ -145,9 +148,9 @@ export default function MotorRentBoardScreen() {
                 tintColor="#10B981"
               />
             }
-            onEndReached={loadMoreContracts} // Trigger loading more when reaching the end
-            onEndReachedThreshold={0.5} // Trigger when 50% of the last item is visible
-            ListFooterComponent={renderFooter} // Show loading spinner at the bottom
+            onEndReached={loadMoreContracts} 
+            onEndReachedThreshold={0.5} // Tải thêm khi cuộn đến 50% từ cuối
+            ListFooterComponent={renderFooter}
             contentContainerStyle={styles.contractList}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
@@ -161,7 +164,7 @@ export default function MotorRentBoardScreen() {
   );
 }
 
-// ContractCard and formatCurrency remain unchanged
+// Component hiển thị thẻ hợp đồng
 function ContractCard({ contract, navigation }) {
   const bike = contract.bike || {};
 

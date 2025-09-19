@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // const BASE_URL = 'https://motorbike-rental-23.onrender.com/api';
-const BASE_URL = 'http://192.168.1.7:8080/api';
+const BASE_URL = 'http://192.168.1.6:8080/api';
 // const BASE_URL = 'http://localhost:8080/api';
 
 export const endpoints = {
@@ -39,6 +39,7 @@ export const endpoints = {
     'getContractById': (id) => `/contracts/${id}`,
     'me': '/users/me',
     'createZaloPayOrder': '/zalopay/create-order',
+    'zaloPayCheckStatus': (id) => `/zalopay/checkstatus/${id}`,
 }
 
 export default axios.create({

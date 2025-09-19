@@ -105,7 +105,12 @@ const BookingDetailScreen = () => {
   }, [rental.status, rental.paymentStatus, rental.rentalId, rental.startDate, rental.paymentDeadline]);
 
   const handlePayment = () => {
-    navigation.navigate('PaymentBooking', { rental });
+    navigation.navigate('PaymentBooking', {
+      rental,
+      onPaymentSuccess: () => {
+        fetchRentalDetail(); // fetch lại khi thanh toán xong
+      }
+    });
   };
 
   const isCompleted = (step) => step.completedStatus.includes(rentalStatus);
@@ -135,21 +140,21 @@ const BookingDetailScreen = () => {
   const handleScanQRCode = useCallback(
     async (data) => {
       try {
-        Alert.alert('DEBUG', '🚀 Bắt đầu handleScanQRCode');
+
         const qrData = JSON.parse(data);
-        Alert.alert('DEBUG', '✅ Parse QR thành công: ' + JSON.stringify(qrData));
+        // Alert.alert('DEBUG', '✅ Parse QR thành công: ' + JSON.stringify(qrData));
 
         if (!qrData.rentalId || !qrData.type || !qrData.timestamp) {
-          Alert.alert('DEBUG', '❌ Thiếu field trong QR');
+          // Alert.alert('DEBUG', '❌ Thiếu field trong QR');
           throw new Error('Mã QR không hợp lệ');
         }
 
         const now = new Date();
-        Alert.alert('DEBUG', '⏰ Thời gian hiện tại: ' + now.toISOString());
+        // Alert.alert('DEBUG', '⏰ Thời gian hiện tại: ' + now.toISOString());
 
         const qrTimestamp = new Date(qrData.timestamp);
         const timeDiff = (now - qrTimestamp) / (1000 * 60);
-        Alert.alert('DEBUG', '📌 timeDiff = ' + timeDiff);
+        // Alert.alert('DEBUG', '📌 timeDiff = ' + timeDiff);
 
         if (timeDiff > 5) {
           throw new Error('Mã QR đã hết hạn');
@@ -161,34 +166,34 @@ const BookingDetailScreen = () => {
 
         const startDate = new Date(rental.startDate);
         const endDate = new Date(rental.endDate);
-        Alert.alert('DEBUG', `📅 startDate=${startDate}, endDate=${endDate}`);
+        // Alert.alert('DEBUG', `📅 startDate=${startDate}, endDate=${endDate}`);
 
         const api = await getAuthApi();
-        Alert.alert('DEBUG', '✅ Lấy được api instance');
+        // Alert.alert('DEBUG', '✅ Lấy được api instance');
 
         if (qrData.type === 'pickup') {
-          Alert.alert('DEBUG', '🚲 Pickup flow');
+          // Alert.alert('DEBUG', '🚲 Pickup flow');
           if (rentalStatus !== 'confirmed' || paymentStatus !== 'paid' || now < startDate || now > endDate) {
             throw new Error('Đơn thuê không ở trạng thái hợp lệ để nhận xe');
           }
-          Alert.alert('DEBUG', '📡 Chuẩn bị gọi verify-qr pickup');
+          // Alert.alert('DEBUG', '📡 Chuẩn bị gọi verify-qr pickup');
           try {
             const res = await api.post('/rentals/verify-qr', {
               rentalId: qrData.rentalId,
               type: 'pickup',
               timestamp: qrData.timestamp,
             });
-            Alert.alert('DEBUG', '✅ verify-qr pickup gọi xong: ' + JSON.stringify(res.data));
+            // Alert.alert('DEBUG', '✅ verify-qr pickup gọi xong: ' + JSON.stringify(res.data));
           } catch (err) {
-            Alert.alert('DEBUG', '❌ verify-qr pickup lỗi: ' + (err.response?.data?.message || err.message));
+            // Alert.alert('DEBUG', '❌ verify-qr pickup lỗi: ' + (err.response?.data?.message || err.message));
             throw err;
           }
 
-          Alert.alert('DEBUG', '✅ Gọi verify-qr pickup thành công');
+          // Alert.alert('DEBUG', '✅ Gọi verify-qr pickup thành công');
           setRentalStatus('active');
           Alert.alert('Thành công', 'Đã xác nhận nhận xe!');
         } else if (qrData.type === 'return') {
-          Alert.alert('DEBUG', '🔄 Return flow');
+          // Alert.alert('DEBUG', '🔄 Return flow');
           if (rentalStatus !== 'active' || now > endDate) {
             throw new Error('Đơn thuê không ở trạng thái hợp lệ để trả xe');
           }

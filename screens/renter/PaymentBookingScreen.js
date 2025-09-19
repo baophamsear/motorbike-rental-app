@@ -59,7 +59,8 @@ export default function PaymentBookingScreen({ route }) {
   const checkStatus = async (appTransId, retries = 3, delay = 1000) => {
     try {
       const api = await getAuthApi();
-      const response = await api.get(`http://192.168.1.7:8080/api/zalopay/checkstatus/${appTransId}`);
+      // const response = await api.get(`http://192.168.1.6:8080/api/zalopay/checkstatus/${appTransId}`);
+      const response = await api.get(endpoints['zaloPayCheckStatus'](appTransId));
       const { returncode, returnmessage } = response.data;
 
       if (returncode === 1 && returnmessage === 'Giao dịch thành công') {
@@ -80,7 +81,12 @@ export default function PaymentBookingScreen({ route }) {
           });
           console.log('updateActiveRental response:', { rentalId, startDate, endDate, totalAmount });
           Alert.alert('Thành công', 'Thanh toán ZaloPay thành công và đơn hàng đã được cập nhật!');
-          navigation.navigate('Home');
+
+          if (route.params?.onPaymentSuccess) {
+            route.params.onPaymentSuccess(); 
+          }
+
+          navigation.goBack();
         } catch (updateError) {
           console.error('Lỗi khi cập nhật đơn hàng:', updateError.response?.data || updateError.message);
           Alert.alert('Lỗi', 'Thanh toán thành công nhưng không thể cập nhật đơn hàng: ' + (updateError.message || 'Lỗi không xác định'));
@@ -195,7 +201,7 @@ export default function PaymentBookingScreen({ route }) {
     } else if (selectedPaymentMethod === 'ZaloPay') {
       try {
         const api = await getAuthApi();
-        const response = await api.post(endpoints['createZaloPayOrder'] || 'http://192.168.1.7:8080/api/zalopay/create-order', {
+        const response = await api.post(endpoints['createZaloPayOrder'] || 'http://192.168.1.6:8080/api/zalopay/create-order', {
           orderId: rental?.rentalId || orderId,
           amount: totalPrice,
           userId: renterId,

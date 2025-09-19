@@ -22,7 +22,7 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = motorbikeapp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = motorbikeapp/Info.plist; sourceTree = "<group>"; };
 		1EC99555639CD7B6843D3440 /* Pods-motorbikeapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-motorbikeapp.release.xcconfig"; path = "Target Support Files/Pods-motorbikeapp/Pods-motorbikeapp.release.xcconfig"; sourceTree = "<group>"; };
-		49C7D7A93AC547BB6669EE58 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = motorbikeapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		49C7D7A93AC547BB6669EE58 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = motorbikeapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		4BD8A3F94997C962AE474341 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-motorbikeapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		714CB02946F1816483FB2BF0 /* Pods-motorbikeapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-motorbikeapp.debug.xcconfig"; path = "Target Support Files/Pods-motorbikeapp/Pods-motorbikeapp.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = motorbikeapp/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -91,6 +91,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				A6FEB378DC04D98B06E8050A /* Pods */,
 				1B73FF6A6F590BE3312DF402 /* ExpoModulesProviders */,
+				ADDFE121E94B481283BF1611 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -119,8 +120,15 @@
 				714CB02946F1816483FB2BF0 /* Pods-motorbikeapp.debug.xcconfig */,
 				1EC99555639CD7B6843D3440 /* Pods-motorbikeapp.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		ADDFE121E94B481283BF1611 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				FA116CB12E7BFC7000E3BDF8 /* New Group */,
+			);
+			name = Resources;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -130,6 +138,13 @@
 			);
 			name = Supporting;
 			path = motorbikeapp/Supporting;
+			sourceTree = "<group>";
+		};
+		FA116CB12E7BFC7000E3BDF8 /* New Group */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = "New Group";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

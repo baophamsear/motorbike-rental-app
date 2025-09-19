@@ -38,7 +38,6 @@ export default function MotorbikeDetailScreen({ route }) {
     const handleBooking = () => {
         setIsLoading(true);
         setModalVisible(true);
-        // Giả lập xử lý đặt xe trong 2 giây
         setTimeout(() => {
             setIsLoading(false);
         }, 2000);
@@ -55,12 +54,11 @@ export default function MotorbikeDetailScreen({ route }) {
             const api = await getAuthApi();
             const res = await api.post(endpoints['createRental'], {
                 contractId: contract.contractId,
-                // renterId: renterId
             });
         } catch (err) {
             console.error('❌ Lỗi khi tạo đơn thuê:', err.response?.data || err.message);
             Alert.alert("Lỗi", "Không thể tạo đơn thuê.");
-            throw err; // để biết lỗi ở nơi gọi
+            throw err; 
         }
     };
 
