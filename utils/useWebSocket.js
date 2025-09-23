@@ -9,7 +9,7 @@ export const useWebSocket = (topic) => {
     if (!topic) return;
 
     const client = new Client({
-      webSocketFactory: () => new WebSocket("ws://192.168.1.6:8080/ws"),
+      webSocketFactory: () => new WebSocket("ws://10.17.39.89:8080/ws"),
       reconnectDelay: 5000,
       debug: (str) => console.log('[STOMP DEBUG]', str),
       onConnect: () => {

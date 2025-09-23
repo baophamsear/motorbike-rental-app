@@ -116,7 +116,8 @@ export default function Register() {
       formData.append('fullName', fullName);
       formData.append('email', email);
       formData.append('password', passcode);
-      formData.append('role', userType);
+      let backendRole = userType === 'Người thuê' ? 'RENTER' : 'LESSOR';
+      formData.append('role', backendRole);
 
       if (avatarRef.current) {
         formData.append('avatarUrl', {
